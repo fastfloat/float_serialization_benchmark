@@ -5,15 +5,6 @@
  * synthetic data. The synthetic data is generated using a random number
  * generator. We measure the speed of the conversion by computing the volume of
  * data generated.
- *
- * Todo: add more libraries and methods.
- *
- * Todo: Verify the results and make sure we are comparing apples to apples. In
- * particular, we should make sure that the conversion is correct and that the
- * strings produced are similar. We could have different benchmarks depending on
- * the precision of the conversion.
- *
- * Todo: We are currently only using doubles, we should also test with floats.
  */
 
 #ifndef __CYGWIN__
