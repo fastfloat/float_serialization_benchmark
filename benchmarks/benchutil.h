@@ -2,6 +2,7 @@
 #define BENCHUTIL_H
 #include <cfloat>
 #include <cstdio>
+#include <chrono>
 
 #if defined(__linux__) || (__APPLE__ && __aarch64__)
 #define USING_COUNTERS
