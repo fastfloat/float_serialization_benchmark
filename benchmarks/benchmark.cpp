@@ -21,7 +21,9 @@
 #define IEEE_8087
 #include "benchutil.h"
 #include "cxxopts.hpp"
+#if NETLIB_SUPPORTED
 #include "gdtoa.h"
+#endif
 #include "grisu2.h"
 #include "random_generators.h"
 #include <algorithm>
@@ -69,6 +71,7 @@ void process(std::vector<double> &lines) {
     }
     return volume;
   });
+#if NETLIB_SUPPORTED
   pretty_print(
       lines, "netlib",
       [](std::vector<double> &lines) {
@@ -89,6 +92,9 @@ void process(std::vector<double> &lines) {
         return volume;
       },
       10);
+#else
+  std::cout << "# netlib not supported" << std::endl;
+#endif
   pretty_print(lines, "sprintf", [](std::vector<double> &lines) {
     double volume = 0;
     char buffer[100];
