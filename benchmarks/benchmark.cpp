@@ -8,43 +8,35 @@
  */
 
 #ifndef __CYGWIN__
-#include "absl/strings/numbers.h"
 #include "absl/strings/str_cat.h"
 #endif
 
 #include "dragonbox/dragonbox_to_chars.h"
 #include "ryu/ryu.h"
-
 #include "double-conversion/double-conversion.h"
-#include "double-conversion/ieee.h"
 
 #define IEEE_8087
 #include "benchutil.h"
 #include "cxxopts.hpp"
+
 #if NETLIB_SUPPORTED
 #include "gdtoa.h"
 #endif
+
 #include "grisu2.h"
 #include "random_generators.h"
-#include <algorithm>
+
 #include <charconv>
-#include <chrono>
 #include <climits>
 #include <cmath>
-#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <ctype.h>
 #include <float.h>
 #include <fmt/format.h>
 #include <fstream>
-#include <iomanip>
 #include <iostream>
 #include <limits.h>
-#include <locale.h>
-#include <random>
-#include <sstream>
 #include <stdio.h>
 #include <string>
 #include <vector>
@@ -177,10 +169,10 @@ void fileload(const char *filename) {
     std::cerr << "can't open " << filename << std::endl;
     return;
   }
-  std::string line;
+
   std::vector<double> lines;
   lines.reserve(10000); // let us reserve plenty of memory.
-  while (getline(inputfile, line)) {
+  for (std::string line; getline(inputfile, line);) {
     try {
       lines.push_back(std::stod(line));
     } catch (...) {

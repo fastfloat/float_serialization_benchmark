@@ -34,7 +34,6 @@ FetchContent_GetProperties(doubleconversion)
 FetchContent_MakeAvailable(doubleconversion)
 
 #CPMAddPackage("gh:ulfjack/ryu@2.0")
-include(FetchContent)
 FetchContent_Declare(
         ryu
         GIT_REPOSITORY https://github.com/ulfjack/ryu

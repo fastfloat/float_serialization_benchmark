@@ -1,8 +1,8 @@
 #ifndef BENCHUTIL_H
 #define BENCHUTIL_H
+
 #include <cfloat>
 #include <cstdio>
-#include <chrono>
 
 #if defined(__linux__) || (__APPLE__ && __aarch64__)
 #define USING_COUNTERS
@@ -131,5 +131,6 @@ void pretty_print(std::vector<double> &lines, std::string name,
   printf("%8.2f Mfloat/s  ", number_of_floats * 1000 / result.first);
   printf(" %8.2f ns/f \n", double(result.first) / number_of_floats);
 }
+
 #endif
 #endif //// BENCHUTIL_H
