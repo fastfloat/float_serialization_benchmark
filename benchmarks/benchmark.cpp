@@ -46,70 +46,66 @@
 #endif
 
 void process(std::vector<double> &lines) {
-  size_t repeat = 100;
-  pretty_print(lines, "std::to_string", [](std::vector<double> &lines) {
+  pretty_print(lines, "std::to_string", [](const std::vector<double> &lines) {
     double volume = 0;
-    for (auto d : lines) {
-      std::string s = std::to_string(d);
+    for (const auto d : lines) {
+      const std::string s = std::to_string(d);
       volume += s.size();
     }
     return volume;
   });
-  pretty_print(lines, "fmt::format", [](std::vector<double> &lines) {
+  pretty_print(lines, "fmt::format", [](const std::vector<double> &lines) {
     double volume = 0;
-    for (auto d : lines) {
-      std::string s = fmt::format("{}", d);
+    for (const auto d : lines) {
+      const std::string s = fmt::format("{}", d);
       volume += s.size();
     }
     return volume;
   });
 #if NETLIB_SUPPORTED
-  pretty_print(
-      lines, "netlib",
-      [](std::vector<double> &lines) {
-        double volume = 0;
-        char *result;
-        int decpt, sign;
-        char *rve;
-        for (auto d : lines) {
-          char *result = dtoa(d, 0, 0, &decpt, &sign, &rve);
-          if (result) {
-            volume += (rve - result);
-            freedtoa(result);
-          } else {
-            std::cerr << "problem with " << d << std::endl;
-            std::abort();
-          }
-        }
-        return volume;
-      },
-      10);
+  pretty_print(lines, "netlib", [](const std::vector<double> &lines) {
+    double volume = 0;
+    char *result;
+    int decpt, sign;
+    char *rve;
+    for (const auto d : lines) {
+      char *result = dtoa(d, 0, 0, &decpt, &sign, &rve);
+      if (result) {
+        volume += (rve - result);
+        freedtoa(result);
+      } else {
+        std::cerr << "problem with " << d << std::endl;
+        std::abort();
+      }
+    }
+    return volume;
+  }, 10);
 #else
   std::cout << "# netlib not supported" << std::endl;
 #endif
-  pretty_print(lines, "sprintf", [](std::vector<double> &lines) {
+  pretty_print(lines, "sprintf", [](const std::vector<double> &lines) {
     double volume = 0;
     char buffer[100];
-    for (auto d : lines) {
+    for (const auto d : lines) {
       volume += snprintf(buffer, sizeof(buffer), "%g", d);
     }
     return volume;
   });
-  pretty_print(lines, "grisu2", [](std::vector<double> &lines) {
+  pretty_print(lines, "grisu2", [](const std::vector<double> &lines) {
     double volume = 0;
     char buffer[100];
-    for (auto d : lines) {
-      char *newp = grisu2::to_chars(buffer, nullptr, d);
+    for (const auto d : lines) {
+      const char *newp = grisu2::to_chars(buffer, nullptr, d);
       volume += newp - buffer;
     }
     return volume;
   });
 #if FROM_CHARS_DOUBLE_SUPPORTED
-  pretty_print(lines, "std::to_chars", [](std::vector<double> &lines) {
+  pretty_print(lines, "std::to_chars", [](const std::vector<double> &lines) {
     double volume = 0;
     char buffer[100];
-    for (auto d : lines) {
-      auto [p, ec] = std::to_chars(buffer, buffer + sizeof(buffer), d);
+    for (const auto d : lines) {
+      const auto [p, ec] = std::to_chars(buffer, buffer + sizeof(buffer), d);
       if(ec != std::errc()) {
         std::cerr << "problem with " << d << std::endl;
         std::abort();
@@ -121,26 +117,35 @@ void process(std::vector<double> &lines) {
 #else
   std::cout << "# std::to_chars not supported" << std::endl;
 #endif
-  pretty_print(lines, "dragonbox", [](std::vector<double> &lines) {
+  pretty_print(lines, "dragonbox", [](const std::vector<double> &lines) {
     double volume = 0;
     char buffer[100];
-    for (auto d : lines) {
-      char *end_ptr = jkj::dragonbox::to_chars(d, buffer);
+    for (const auto d : lines) {
+      const char *end_ptr = jkj::dragonbox::to_chars(d, buffer);
       volume += end_ptr - &buffer[0];
     }
     return volume;
   });
 
-  pretty_print(lines, "double_conversion", [](std::vector<double> &lines) {
+  pretty_print(lines, "ryu", [](const std::vector<double> &lines) {
     double volume = 0;
-    double_conversion::DoubleToStringConverter converter(
+    char buffer[100];
+    for (const auto d : lines) {
+      volume += d2s_buffered_n(d, buffer);
+    }
+    return volume;
+  });
+
+  pretty_print(lines, "double_conversion", [](const std::vector<double> &lines) {
+    double volume = 0;
+    const double_conversion::DoubleToStringConverter converter(
         double_conversion::DoubleToStringConverter::NO_FLAGS, "inf", "nan", 'e',
         -4, 6, 0, 0);
     const int kBufferSize = 100;
     char buffer[kBufferSize];
     double_conversion::StringBuilder builder(buffer, kBufferSize);
 
-    for (auto d : lines) {
+    for (const auto d : lines) {
       builder.Reset();
       if (!converter.ToShortest(d, &builder)) {
         std::cerr << "problem with " << d << std::endl;
@@ -151,10 +156,10 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "abseil", [](std::vector<double> &lines) {
+  pretty_print(lines, "abseil", [](const std::vector<double> &lines) {
     double volume = 0;
     std::string buffer;
-    for (auto d : lines) {
+    for (const auto d : lines) {
       buffer.clear();
       absl::StrAppend(&buffer, d);
       volume += buffer.size();
