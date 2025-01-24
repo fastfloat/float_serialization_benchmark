@@ -72,7 +72,7 @@ void pretty_print(std::vector<double> &lines, std::string name,
   instructions_avg /= events.size();
   average_ns /= events.size();
   branches_avg /= events.size();
-  printf("%-40s: %8.2f MB/s (+/- %.1f %%) ", name.data(),
+  printf("%-30s: %8.2f MB/s (+/- %.1f %%) ", name.data(),
          volumeMB * 1000000000 / min_ns,
          (average_ns - min_ns) * 100.0 / average_ns);
   printf("%8.2f MB ", volumeMB);
@@ -124,7 +124,7 @@ void pretty_print(std::vector<double> &lines, std::string name,
   double volume = function(lines);
   std::pair<double, double> result = time_it_ns(lines, function, repeat);
   double volumeMB = volume / (1024. * 1024.);
-  printf("%-40s: %8.2f MB/s (+/- %.1f %%) ", name.data(),
+  printf("%-30s: %8.2f MB/s (+/- %.1f %%) ", name.data(),
          volumeMB * 1000000000 / result.first,
          (result.second - result.first) * 100.0 / result.second);
   printf("%8.2f MB ", volumeMB);
