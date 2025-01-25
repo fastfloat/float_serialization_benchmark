@@ -5,8 +5,10 @@
 #include <cstdio>
 
 #if defined(__linux__) || (__APPLE__ && __aarch64__)
-#define USING_COUNTERS
-#include "counters/event_counter.h"
+  #define USING_COUNTERS
+  #include "counters/event_counter.h"
+#else
+  #include <chrono>
 #endif
 
 #ifdef USING_COUNTERS
@@ -96,7 +98,7 @@ void pretty_print(std::vector<double> &lines, std::string name,
 template <class T>
 std::pair<double, double> time_it_ns(std::vector<double> &lines,
                                      T const &function, size_t repeat) {
-  std::chrono::high_resolution_clock::time_point t1, t2;
+  typename std::chrono::high_resolution_clock::time_point t1, t2;
   double average = 0;
   double min_value = DBL_MAX;
   bool printed_bug = false;
