@@ -16,6 +16,7 @@ Currently, the following approaches are compared:
     - [Ryu](https://github.com/ulfjack/ryu)
     - [double-conversion](https://github.com/google/double-conversion)
     - [Abseil](https://github.com/abseil/abseil-cpp)
+    - [Teju Jagua](https://github.com/cassioneri/teju_jagua)
 
 If you have a recent version of CMake (3.15 or better) under linux,  you can simply
 go in the directory and type the following commands:

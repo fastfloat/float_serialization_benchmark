@@ -7,6 +7,9 @@
  * data generated.
  */
 
+// Teju Jagua
+#include "cpp/common/traits.hpp"
+
 #ifndef __CYGWIN__
 #include "absl/strings/str_cat.h"
 #endif
@@ -25,6 +28,7 @@
 
 #include "grisu2.h"
 #include "random_generators.h"
+#include "decimalToString.h"
 
 #include <charconv>
 #include <climits>
@@ -132,6 +136,17 @@ void process(std::vector<double> &lines) {
     char buffer[100];
     for (const auto d : lines) {
       volume += d2s_buffered_n(d, buffer);
+    }
+    return volume;
+  });
+
+  pretty_print(lines, "teju_jagua", [](const std::vector<double> &lines) {
+    double volume = 0;
+    char buffer[100];
+    for (const auto d : lines) {
+      const auto fields = teju::traits_t<double>::teju(d);
+      const bool sign = (*reinterpret_cast<const uint64_t*>(&d) >> 63) & 1;
+      volume += to_chars(fields.mantissa, fields.exponent, sign, buffer);
     }
     return volume;
   });

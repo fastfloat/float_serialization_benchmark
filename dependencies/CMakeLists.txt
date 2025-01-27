@@ -26,12 +26,20 @@ endif()
 
 set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "Disable deprecation warnings" FORCE)
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
-#cmake_policy(SET CMP0077 NEW)
-FetchContent_Declare(doubleconversion
-     GIT_REPOSITORY https://github.com/google/double-conversion.git
-     GIT_TAG "v3.1.5")
-FetchContent_GetProperties(doubleconversion)
+
+FetchContent_Declare(
+        doubleconversion
+        GIT_REPOSITORY https://github.com/google/double-conversion.git
+        GIT_TAG "v3.1.5")
 FetchContent_MakeAvailable(doubleconversion)
+
+FetchContent_Declare(
+        teju_jagua
+        GIT_REPOSITORY https://github.com/jaja360/teju_jagua.git
+        GIT_TAG main
+        GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(teju_jagua)
 
 #CPMAddPackage("gh:ulfjack/ryu@2.0")
 FetchContent_Declare(
@@ -40,7 +48,6 @@ FetchContent_Declare(
         GIT_TAG master
         GIT_SHALLOW TRUE
 )
-
 FetchContent_MakeAvailable(ryu)
 
 FetchContent_Declare(
@@ -49,7 +56,6 @@ FetchContent_Declare(
         GIT_TAG tags/1.1.3
         GIT_SHALLOW TRUE
 )
-
 FetchContent_MakeAvailable(dragonbox)
 
 CPMAddPackage("gh:fmtlib/fmt#11.0.2")
