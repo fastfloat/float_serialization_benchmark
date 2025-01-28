@@ -51,6 +51,15 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(ryu)
 
 FetchContent_Declare(
+        grisu-exact
+        GIT_REPOSITORY https://github.com/jk-jeon/Grisu-Exact
+        GIT_TAG master
+        GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(grisu-exact)
+set(grisu-exact_SOURCE_DIR ${grisu-exact_SOURCE_DIR} PARENT_SCOPE)
+
+FetchContent_Declare(
         dragonbox
         GIT_REPOSITORY https://github.com/jk-jeon/dragonbox
         GIT_TAG tags/1.1.3

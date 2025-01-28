@@ -11,6 +11,7 @@ Currently, the following approaches are compared:
     - [netlib](https://github.com/jwiegley/gdtoa)
     - [sprintf](https://en.cppreference.com/w/c/io/fprintf)
     - [grisu2](https://github.com/simdjson/simdjson/blob/master/src/to_chars.cpp)
+    - [grisu-exact](https://github.com/jk-jeon/Grisu-Exact)
     - [std::to_chars](https://en.cppreference.com/w/cpp/utility/to_chars)
     - [Dragonbox](https://github.com/jk-jeon/dragonbox)
     - [Ryu](https://github.com/ulfjack/ryu)

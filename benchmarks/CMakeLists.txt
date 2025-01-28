@@ -35,3 +35,5 @@ target_link_libraries(benchmark PUBLIC double-conversion)
 target_link_libraries(benchmark PUBLIC ryu::ryu)
 target_link_libraries(benchmark PUBLIC teju)
 target_link_libraries(benchmark PUBLIC dragonbox::dragonbox_to_chars)
+
+target_include_directories(benchmark PUBLIC ${grisu-exact_SOURCE_DIR})

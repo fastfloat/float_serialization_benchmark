@@ -17,6 +17,7 @@
 #include "dragonbox/dragonbox_to_chars.h"
 #include "ryu/ryu.h"
 #include "double-conversion/double-conversion.h"
+#include "grisu_exact.h"
 
 #define IEEE_8087
 #include "benchutil.h"
@@ -58,6 +59,7 @@ void process(std::vector<double> &lines) {
     }
     return volume;
   });
+
   pretty_print(lines, "fmt::format", [](const std::vector<double> &lines) {
     double volume = 0;
     for (const auto d : lines) {
@@ -66,6 +68,7 @@ void process(std::vector<double> &lines) {
     }
     return volume;
   });
+
 #if NETLIB_SUPPORTED
   pretty_print(lines, "netlib", [](const std::vector<double> &lines) {
     double volume = 0;
@@ -87,6 +90,7 @@ void process(std::vector<double> &lines) {
 #else
   std::cout << "# netlib not supported" << std::endl;
 #endif
+
   pretty_print(lines, "sprintf", [](const std::vector<double> &lines) {
     double volume = 0;
     char buffer[100];
@@ -95,6 +99,7 @@ void process(std::vector<double> &lines) {
     }
     return volume;
   });
+
   pretty_print(lines, "grisu2", [](const std::vector<double> &lines) {
     double volume = 0;
     char buffer[100];
@@ -104,6 +109,17 @@ void process(std::vector<double> &lines) {
     }
     return volume;
   });
+
+  pretty_print(lines, "grisu_exact", [](const std::vector<double> &lines) {
+    double volume = 0;
+    char buffer[100];
+    for (const auto d : lines) {
+      auto v = jkj::grisu_exact(d);
+      volume += to_chars(v.significand, v.exponent, v.is_negative, buffer);
+    }
+    return volume;
+  });
+
 #if FROM_CHARS_DOUBLE_SUPPORTED
   pretty_print(lines, "std::to_chars", [](const std::vector<double> &lines) {
     double volume = 0;
@@ -121,6 +137,7 @@ void process(std::vector<double> &lines) {
 #else
   std::cout << "# std::to_chars not supported" << std::endl;
 #endif
+
   pretty_print(lines, "dragonbox", [](const std::vector<double> &lines) {
     double volume = 0;
     char buffer[100];
