@@ -9,6 +9,7 @@
 struct float_number_generator {
   virtual double new_float() = 0;
   virtual std::string describe() = 0;
+  virtual ~float_number_generator() = default;
 };
 
 struct uniform_generator : float_number_generator {

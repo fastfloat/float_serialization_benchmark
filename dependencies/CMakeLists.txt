@@ -40,7 +40,14 @@ FetchContent_Declare(
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(teju_jagua)
-
+get_property(teju_has_uint128 DIRECTORY ${teju_jagua_SOURCE_DIR} PROPERTY teju_has_uint128)
+# When teju_has_float128 is set, then we will need teju_boost_multiprecision
+get_property(teju_has_float128 DIRECTORY ${teju_jagua_SOURCE_DIR} PROPERTY teju_has_float128)
+if(teju_has_float128)
+        message(STATUS "support for 128-bit floats detected by teju")
+else()
+        message(STATUS "support for 128-bit floats NOT detected by teju")
+endif()
 #CPMAddPackage("gh:ulfjack/ryu@2.0")
 FetchContent_Declare(
         ryu
