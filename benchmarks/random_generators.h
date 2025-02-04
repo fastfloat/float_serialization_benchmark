@@ -1,12 +1,15 @@
 #ifndef RANDOM_GENERATORS_H
 #define RANDOM_GENERATORS_H
 
+#include <array>
+#include <memory>
 #include <random>
 #include <iostream>
 
 struct float_number_generator {
-  virtual double new_float() { return 0; }
-  virtual std::string describe() { return "abstract class"; }
+  virtual double new_float() = 0;
+  virtual std::string describe() = 0;
+  virtual ~float_number_generator() = default;
 };
 
 struct uniform_generator : float_number_generator {
@@ -80,16 +83,20 @@ struct simple_int64 : float_number_generator {
   double new_float() override { return gen(); }
 };
 
-std::vector<std::string> model_names = {"uniform",          "one_over_rand32",
-                                        "simple_uniform32", "simple_int32",
-                                        "int_e_int",        "simple_int64"};
-std::unique_ptr<float_number_generator>
+constexpr std::array<const char*, 6> model_names = {
+  "uniform",          "one_over_rand32",
+  "simple_uniform32", "simple_int32",
+  "int_e_int",        "simple_int64"
+};
+
+inline std::unique_ptr<float_number_generator>
 get_generator_by_name(std::string name) {
   std::cout << "available models (-m): ";
   for (std::string name : model_names) {
     std::cout << name << " ";
   }
   std::cout << std::endl;
+
   // This is naive, but also not very important.
   if (name == "uniform") {
     return std::unique_ptr<float_number_generator>(new uniform_generator());

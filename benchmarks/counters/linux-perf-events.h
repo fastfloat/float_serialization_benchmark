@@ -8,9 +8,8 @@
 
 #include <cerrno>  // for errno
 #include <cstring> // for memset
-#include <stdexcept>
-
-#include <iostream>
+#include <cstdint> // for uint32_t, uint64_t
+#include <string>
 #include <vector>
 
 template <int TYPE = PERF_TYPE_HARDWARE> class LinuxEvents {

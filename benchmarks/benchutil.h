@@ -1,12 +1,14 @@
 #ifndef BENCHUTIL_H
 #define BENCHUTIL_H
+
 #include <cfloat>
 #include <cstdio>
-#include <chrono>
 
 #if defined(__linux__) || (__APPLE__ && __aarch64__)
-#define USING_COUNTERS
-#include "counters/event_counter.h"
+  #define USING_COUNTERS
+  #include "counters/event_counter.h"
+#else
+  #include <chrono>
 #endif
 
 #ifdef USING_COUNTERS
@@ -72,7 +74,7 @@ void pretty_print(std::vector<double> &lines, std::string name,
   instructions_avg /= events.size();
   average_ns /= events.size();
   branches_avg /= events.size();
-  printf("%-40s: %8.2f MB/s (+/- %.1f %%) ", name.data(),
+  printf("%-30s: %8.2f MB/s (+/- %.1f %%) ", name.data(),
          volumeMB * 1000000000 / min_ns,
          (average_ns - min_ns) * 100.0 / average_ns);
   printf("%8.2f MB ", volumeMB);
@@ -96,7 +98,7 @@ void pretty_print(std::vector<double> &lines, std::string name,
 template <class T>
 std::pair<double, double> time_it_ns(std::vector<double> &lines,
                                      T const &function, size_t repeat) {
-  std::chrono::high_resolution_clock::time_point t1, t2;
+  typename std::chrono::high_resolution_clock::time_point t1, t2;
   double average = 0;
   double min_value = DBL_MAX;
   bool printed_bug = false;
@@ -124,12 +126,13 @@ void pretty_print(std::vector<double> &lines, std::string name,
   double volume = function(lines);
   std::pair<double, double> result = time_it_ns(lines, function, repeat);
   double volumeMB = volume / (1024. * 1024.);
-  printf("%-40s: %8.2f MB/s (+/- %.1f %%) ", name.data(),
+  printf("%-30s: %8.2f MB/s (+/- %.1f %%) ", name.data(),
          volumeMB * 1000000000 / result.first,
          (result.second - result.first) * 100.0 / result.second);
   printf("%8.2f MB ", volumeMB);
   printf("%8.2f Mfloat/s  ", number_of_floats * 1000 / result.first);
   printf(" %8.2f ns/f \n", double(result.first) / number_of_floats);
 }
+
 #endif
 #endif //// BENCHUTIL_H

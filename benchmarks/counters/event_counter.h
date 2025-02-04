@@ -5,7 +5,6 @@
 #ifndef _MSC_VER
 #include <dirent.h>
 #endif
-#include <cinttypes>
 
 #include <cstring>
 

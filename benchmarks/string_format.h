@@ -1,8 +1,9 @@
 #ifndef STRING_FORMAT_H
 #define STRING_FORMAT_H
 
-#include <iostream>
+#include <limits>
 #include <sstream>
+
 /**
  * This will generate a string with exactly the number of digits
  * that are required to always be able to recover the original
