@@ -1,9 +1,29 @@
-#include "decimalToString.h"
+#include "ieeeToString.h"
 
 #include <cassert>
 #include <cstring>
 
 #include "ryu/digit_table.h"
+
+IEEE754f decode_ieee754(float f) {
+  const uint32_t& bits = reinterpret_cast<const uint32_t&>(f);
+
+  IEEE754f decomposed;
+  decomposed.exponent = (bits >> FloatMantissaBits) & ((1 << FloatExponentBits) - 1);
+  decomposed.mantissa = bits & ((1 << FloatMantissaBits) - 1);
+  decomposed.sign = bits >> 31;
+  return decomposed;
+}
+
+IEEE754d decode_ieee754(double f) {
+  const uint64_t& bits = reinterpret_cast<const uint64_t&>(f);
+
+  IEEE754d decomposed;
+  decomposed.exponent = (bits >> DoubleMantissaBits) & ((1ull << DoubleExponentBits) - 1);
+  decomposed.mantissa = bits & ((1ull << DoubleMantissaBits) - 1);
+  decomposed.sign = bits >> 63;
+  return decomposed;
+}
 
 // Extracted from the Ryu implementation.
 static inline uint32_t decimalLength17(const uint64_t v) {

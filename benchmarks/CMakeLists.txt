@@ -1,6 +1,6 @@
 add_executable(benchmark
     benchmark.cpp
-    decimalToString.cpp
+    ieeeToString.cpp
 )
 
 include(CheckSourceCompiles)
