@@ -18,6 +18,7 @@
 #include "ryu/ryu.h"
 #include "double-conversion/double-conversion.h"
 #include "grisu_exact.h"
+#include "dragon4.h"
 
 #define IEEE_8087
 #include "benchutil.h"
@@ -51,6 +52,20 @@
 #endif
 
 void process(std::vector<double> &lines) {
+  pretty_print(lines, "dragon4", [](const std::vector<double> &lines) {
+    double volume = 0;
+    for (const auto d : lines) {
+      uint64_t dmantissa;
+      int dexp;
+      const IEEE754d fields = decode_ieee754(d);
+      dragon4::Dragon4(dmantissa, dexp, fields.mantissa, fields.exponent,
+                       true, true);
+      char buffer[100];
+      volume += to_chars(dmantissa, dexp, fields.sign, buffer);
+    }
+    return volume;
+  });
+
   pretty_print(lines, "std::to_string", [](const std::vector<double> &lines) {
     double volume = 0;
     for (const auto d : lines) {
