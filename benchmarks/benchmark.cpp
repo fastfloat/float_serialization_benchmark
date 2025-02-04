@@ -19,6 +19,7 @@
 #include "double-conversion/double-conversion.h"
 #include "grisu_exact.h"
 #include "dragon4.h"
+#include "schubfach_64.h"
 
 #define IEEE_8087
 #include "benchutil.h"
@@ -152,6 +153,16 @@ void process(std::vector<double> &lines) {
 #else
   std::cout << "# std::to_chars not supported" << std::endl;
 #endif
+
+  pretty_print(lines, "schubfach", [](const std::vector<double> &lines) {
+    double volume = 0;
+    char buffer[100];
+    for (const auto d : lines) {
+      const char *end_ptr = schubfach::Dtoa(buffer, d);
+      volume += end_ptr - &buffer[0];
+    }
+    return volume;
+  });
 
   pretty_print(lines, "dragonbox", [](const std::vector<double> &lines) {
     double volume = 0;
