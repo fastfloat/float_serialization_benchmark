@@ -30,7 +30,9 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 FetchContent_Declare(
         doubleconversion
         GIT_REPOSITORY https://github.com/google/double-conversion.git
-        GIT_TAG "v3.1.5")
+        GIT_TAG "v3.1.5"
+        GIT_SHALLOW TRUE
+)
 FetchContent_MakeAvailable(doubleconversion)
 
 FetchContent_Declare(
@@ -48,6 +50,7 @@ if(teju_has_float128)
 else()
         message(STATUS "support for 128-bit floats NOT detected by teju")
 endif()
+
 #CPMAddPackage("gh:ulfjack/ryu@2.0")
 FetchContent_Declare(
         ryu
@@ -73,6 +76,26 @@ FetchContent_Declare(
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(dragonbox)
+
+FetchContent_Declare(
+        drachennest # for schubfach and dragon4
+        GIT_REPOSITORY https://github.com/abolz/Drachennest.git
+        GIT_TAG master
+        GIT_SHALLOW TRUE
+)
+FetchContent_GetProperties(drachennest)
+if(NOT drachennest_POPULATED)
+  FetchContent_Populate(drachennest)  # Downloads code to ${drachennest_SOURCE_DIR}
+endif()
+set(drachennest_SOURCE_DIR/src ${drachennest_SOURCE_DIR}/src PARENT_SCOPE)
+add_library(dragon_schubfach_lib STATIC
+    ${drachennest_SOURCE_DIR}/src/dragon4.cc
+    ${drachennest_SOURCE_DIR}/src/schubfach_32.cc
+    ${drachennest_SOURCE_DIR}/src/schubfach_64.cc
+)
+target_include_directories(dragon_schubfach_lib PUBLIC
+    ${drachennest_SOURCE_DIR}/src
+)
 
 CPMAddPackage("gh:fmtlib/fmt#11.0.2")
 CPMAddPackage(
