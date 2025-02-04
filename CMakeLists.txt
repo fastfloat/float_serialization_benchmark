@@ -8,11 +8,20 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 cmake_policy(SET CMP0169 OLD) # Prevent warning when using FetchContent_Populate
 
+include(CheckCXXCompilerFlag)
+unset(FASTPFOR_COMPILER_SUPPORTS_MARCH_NATIVE CACHE)
+CHECK_CXX_COMPILER_FLAG(-march=native FASTPFOR_COMPILER_SUPPORTS_MARCH_NATIVE)
+if(FASTPFOR_COMPILER_SUPPORTS_MARCH_NATIVE)
+    add_compile_options(-march=native)
+else()
+     message(STATUS "native target not supported")
+endif()
+
 if (NOT CMAKE_BUILD_TYPE)
   message(STATUS "No build type selected, default to Release")
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
 endif()
 include(cmake/CPM.cmake)
-add_subdirectory(dependencies)
 
+add_subdirectory(dependencies)
 add_subdirectory(benchmarks)
