@@ -12,15 +12,15 @@
 #endif
 
 #ifdef USING_COUNTERS
-template <class T>
-std::vector<event_count> time_it_ns(std::vector<double> &lines,
-                                    T const &function, size_t repeat) {
+template <class T, class Func>
+std::vector<event_count> time_it_ns(const std::vector<T> &lines,
+                                    Func&& function, size_t repeat) {
   std::vector<event_count> aggregate;
   event_collector collector;
   bool printed_bug = false;
   for (size_t i = 0; i < repeat; i++) {
     collector.start();
-    double ts = function(lines);
+    const T ts = function(lines);
     if (ts == 0 && !printed_bug) {
       printf("bug\n");
       printed_bug = true;
@@ -30,13 +30,13 @@ std::vector<event_count> time_it_ns(std::vector<double> &lines,
   return aggregate;
 }
 
-template <class T>
-void pretty_print(std::vector<double> &lines, std::string name,
-                  T const &function, size_t repeat = 100) {
-  size_t number_of_floats = lines.size();
-  double volume = function(lines);
-  std::vector<event_count> events = time_it_ns(lines, function, repeat);
-  double volumeMB = volume / (1024. * 1024.);
+template <class T, class Func>
+void pretty_print(const std::vector<T> &lines, const std::string &name,
+                  Func&& function, size_t repeat = 100) {
+  const size_t number_of_floats = lines.size();
+  const T volume = function(lines);
+  const double volumeMB = volume / (1024. * 1024.);
+  const std::vector<event_count> events = time_it_ns(lines, function, repeat);
   double average_ns{0};
   double min_ns{DBL_MAX};
   double cycles_min{DBL_MAX};
@@ -48,24 +48,24 @@ void pretty_print(std::vector<double> &lines, std::string name,
   double branch_misses_min{0};
   double branch_misses_avg{0};
   for (event_count e : events) {
-    double ns = e.elapsed_ns();
+    const double ns = e.elapsed_ns();
     average_ns += ns;
     min_ns = min_ns < ns ? min_ns : ns;
 
-    double cycles = e.cycles();
+    const double cycles = e.cycles();
     cycles_avg += cycles;
     cycles_min = cycles_min < cycles ? cycles_min : cycles;
 
-    double instructions = e.instructions();
+    const double instructions = e.instructions();
     instructions_avg += instructions;
     instructions_min =
         instructions_min < instructions ? instructions_min : instructions;
 
-    double branches = e.branches();
+    const double branches = e.branches();
     branches_avg += branches;
     branches_min = branches_min < branches ? branches_min : branches;
 
-    double branch_misses = e.missed_branches();
+    const double branch_misses = e.missed_branches();
     branch_misses_avg += branch_misses;
     branch_misses_min =
         branch_misses_min < branch_misses ? branch_misses_min : branch_misses;
@@ -74,6 +74,7 @@ void pretty_print(std::vector<double> &lines, std::string name,
   instructions_avg /= events.size();
   average_ns /= events.size();
   branches_avg /= events.size();
+
   printf("%-30s: %8.2f MB/s (+/- %.1f %%) ", name.data(),
          volumeMB * 1000000000 / min_ns,
          (average_ns - min_ns) * 100.0 / average_ns);
@@ -95,22 +96,22 @@ void pretty_print(std::vector<double> &lines, std::string name,
   printf("\n");
 }
 #else
-template <class T>
-std::pair<double, double> time_it_ns(std::vector<double> &lines,
-                                     T const &function, size_t repeat) {
+template <class T, class Func>
+std::pair<double, double> time_it_ns(const std::vector<T> &lines,
+                                     Func&& function, size_t repeat) {
   typename std::chrono::high_resolution_clock::time_point t1, t2;
   double average = 0;
   double min_value = DBL_MAX;
   bool printed_bug = false;
   for (size_t i = 0; i < repeat; i++) {
     t1 = std::chrono::high_resolution_clock::now();
-    double ts = function(lines);
+    const T ts = function(lines);
     if (ts == 0 && !printed_bug) {
       printf("bug\n");
       printed_bug = true;
     }
     t2 = std::chrono::high_resolution_clock::now();
-    double dif =
+    const double dif =
         std::chrono::duration_cast<std::chrono::nanoseconds>(t2 - t1).count();
     average += dif;
     min_value = min_value < dif ? min_value : dif;
@@ -119,13 +120,14 @@ std::pair<double, double> time_it_ns(std::vector<double> &lines,
   return std::make_pair(min_value, average);
 }
 
-template <class T>
-void pretty_print(std::vector<double> &lines, std::string name,
-                  T const &function, size_t repeat = 100) {
-  size_t number_of_floats = lines.size();
-  double volume = function(lines);
-  std::pair<double, double> result = time_it_ns(lines, function, repeat);
-  double volumeMB = volume / (1024. * 1024.);
+template <class T, class Func>
+void pretty_print(const std::vector<T> &lines, const std::string &name,
+                  Func&& function, size_t repeat = 100) {
+  const size_t number_of_floats = lines.size();
+  const T volume = function(lines);
+  const double volumeMB = volume / (1024. * 1024.);
+  const std::pair<double, double> result = time_it_ns(lines, function, repeat);
+
   printf("%-30s: %8.2f MB/s (+/- %.1f %%) ", name.data(),
          volumeMB * 1000000000 / result.first,
          (result.second - result.first) * 100.0 / result.second);

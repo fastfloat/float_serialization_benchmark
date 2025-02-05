@@ -58,9 +58,10 @@
 #include <charconv>
 #endif
 
-void process(std::vector<double> &lines) {
-  pretty_print(lines, "dragon4", [](const std::vector<double> &lines) {
-    double volume = 0;
+template <typename T>
+void process(const std::vector<T> &lines) {
+  pretty_print(lines, "dragon4", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
     for (const auto d : lines) {
       uint64_t dmantissa;
       int dexp;
@@ -72,7 +73,7 @@ void process(std::vector<double> &lines) {
     }
     return volume;
   });
-  
+
 #if ERROL_SUPPORTED
   pretty_print(lines, "errol3", [](const std::vector<double> &lines) {
     double volume = 0;
@@ -86,8 +87,9 @@ void process(std::vector<double> &lines) {
 #else
   std::cout << "# errol not supported" << std::endl;
 #endif // ERROL_SUPPORTED
-  pretty_print(lines, "std::to_string", [](const std::vector<double> &lines) {
-    double volume = 0;
+
+  pretty_print(lines, "std::to_string", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
     for (const auto d : lines) {
       const std::string s = std::to_string(d);
       volume += s.size();
@@ -95,8 +97,8 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "fmt::format", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "fmt::format", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
     for (const auto d : lines) {
       const std::string s = fmt::format("{}", d);
       volume += s.size();
@@ -105,8 +107,8 @@ void process(std::vector<double> &lines) {
   });
 
 #if NETLIB_SUPPORTED
-  pretty_print(lines, "netlib", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "netlib", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
     char *result;
     int decpt, sign;
     char *rve;
@@ -126,8 +128,8 @@ void process(std::vector<double> &lines) {
   std::cout << "# netlib not supported" << std::endl;
 #endif
 
-  pretty_print(lines, "sprintf", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "sprintf", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       volume += snprintf(buffer, sizeof(buffer), "%g", d);
@@ -135,8 +137,8 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "grisu2", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "grisu2", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       const char *newp = grisu2::to_chars(buffer, nullptr, d);
@@ -145,8 +147,8 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "grisu_exact", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "grisu_exact", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       auto v = jkj::grisu_exact(d);
@@ -155,8 +157,44 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "schubfach", [](const std::vector<double> &lines) {
+#if FROM_CHARS_DOUBLE_SUPPORTED
+  pretty_print(lines, "std::to_chars", [](const std::vector<double> &lines) {
     double volume = 0;
+    char buffer[100];
+    for (const auto d : lines) {
+      const auto [p, ec] = std::to_chars(buffer, buffer + sizeof(buffer), d);
+      if(ec != std::errc()) {
+        std::cerr << "problem with " << d << std::endl;
+        std::abort();
+      }
+      volume += p - buffer;
+    }
+    return volume;
+  });
+#else
+  std::cout << "# std::to_chars not supported" << std::endl;
+#endif
+
+#if FROM_CHARS_DOUBLE_SUPPORTED
+  pretty_print(lines, "std::to_chars", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
+    char buffer[100];
+    for (const auto d : lines) {
+      const auto [p, ec] = std::to_chars(buffer, buffer + sizeof(buffer), d);
+      if(ec != std::errc()) {
+        std::cerr << "problem with " << d << std::endl;
+        std::abort();
+      }
+      volume += p - buffer;
+    }
+    return volume;
+  });
+#else
+  std::cout << "# std::to_chars not supported" << std::endl;
+#endif
+
+  pretty_print(lines, "schubfach", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       const char *end_ptr = schubfach::Dtoa(buffer, d);
@@ -165,8 +203,8 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "dragonbox", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "dragonbox", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       const char *end_ptr = jkj::dragonbox::to_chars(d, buffer);
@@ -175,8 +213,8 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "ryu", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "ryu", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       volume += d2s_buffered_n(d, buffer);
@@ -184,8 +222,8 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "teju_jagua", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "teju_jagua", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       const auto fields = teju::traits_t<double>::teju(d);
@@ -195,8 +233,8 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "double_conversion", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "double_conversion", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
     const double_conversion::DoubleToStringConverter converter(
         double_conversion::DoubleToStringConverter::NO_FLAGS, "inf", "nan", 'e',
         -4, 6, 0, 0);
@@ -215,8 +253,8 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "abseil", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "abseil", [](const std::vector<T> &lines) -> T {
+    T volume = 0;
     std::string buffer;
     for (const auto d : lines) {
       buffer.clear();
@@ -296,13 +334,16 @@ int main(int argc, char **argv) {
         cxxopts::value<size_t>()->default_value("100000"))(
         "m,model", "Random Model.",
         cxxopts::value<std::string>()->default_value("uniform"))(
+        "s,single", "Use single precision instead of double.",
+        cxxopts::value<bool>()->default_value("false"))(
         "h,help", "Print usage.");
-    auto result = options.parse(argc, argv);
+    const auto result = options.parse(argc, argv);
     if (result["help"].as<bool>()) {
       std::cout << options.help() << std::endl;
       return EXIT_SUCCESS;
     }
-    auto filename = result["file"].as<std::string>();
+    const bool single = result["single"].as<bool>();
+    const auto filename = result["file"].as<std::string>();
     if (filename.empty()) {
       parse_random_numbers(result["volume"].as<size_t>(),
                            result["model"].as<std::string>());
