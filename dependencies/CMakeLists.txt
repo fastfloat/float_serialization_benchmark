@@ -104,7 +104,7 @@ CPMAddPackage(
   OPTIONS "CXXOPTS_BUILD_EXAMPLES NO" "CXXOPTS_BUILD_TESTS NO" "CXXOPTS_ENABLE_INSTALL YES"
 )
 
-
+if(NOT WIN32)
 CPMAddPackage(
   NAME errol
   GITHUB_REPOSITORY marcandrysco/Errol
@@ -115,3 +115,4 @@ CPMAddPackage(
 
 add_library(errol STATIC "${errol_SOURCE_DIR}/lib/errol.c")
 target_include_directories(errol SYSTEM PUBLIC "${errol_SOURCE_DIR}/lib")
+endif()

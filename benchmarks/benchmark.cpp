@@ -20,7 +20,12 @@
 #include "grisu_exact.h"
 #include "dragon4.h"
 #include "schubfach_64.h"
+#if __has_include("errol.h")
 #include "errol.h"
+#define ERROL_SUPPORTED 1
+#else
+#define ERROL_SUPPORTED 0
+#endif
 
 #define IEEE_8087
 #include "benchutil.h"
@@ -67,7 +72,8 @@ void process(std::vector<double> &lines) {
     }
     return volume;
   });
-
+  
+#if ERROL_SUPPORTED
   pretty_print(lines, "errol3", [](const std::vector<double> &lines) {
     double volume = 0;
     char buffer[100];
@@ -77,7 +83,9 @@ void process(std::vector<double> &lines) {
     }
     return volume;
   });
-
+#else
+  std::cout << "# errol not supported" << std::endl;
+#endif // ERROL_SUPPORTED
   pretty_print(lines, "std::to_string", [](const std::vector<double> &lines) {
     double volume = 0;
     for (const auto d : lines) {
