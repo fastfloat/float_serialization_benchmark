@@ -20,6 +20,7 @@
 #include "grisu_exact.h"
 #include "dragon4.h"
 #include "schubfach_64.h"
+#include "errol.h"
 
 #define IEEE_8087
 #include "benchutil.h"
@@ -63,6 +64,16 @@ void process(std::vector<double> &lines) {
                        true, true);
       char buffer[100];
       volume += to_chars(dmantissa, dexp, fields.sign, buffer);
+    }
+    return volume;
+  });
+
+  pretty_print(lines, "errol3", [](const std::vector<double> &lines) {
+    double volume = 0;
+    char buffer[100];
+    for (const auto d : lines) {
+      errol3_dtoa(d, buffer); // returns the exponent?
+      volume += std::strlen(buffer);
     }
     return volume;
   });
@@ -136,24 +147,6 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-#if FROM_CHARS_DOUBLE_SUPPORTED
-  pretty_print(lines, "std::to_chars", [](const std::vector<double> &lines) {
-    double volume = 0;
-    char buffer[100];
-    for (const auto d : lines) {
-      const auto [p, ec] = std::to_chars(buffer, buffer + sizeof(buffer), d);
-      if(ec != std::errc()) {
-        std::cerr << "problem with " << d << std::endl;
-        std::abort();
-      }
-      volume += p - buffer;
-    }
-    return volume;
-  });
-#else
-  std::cout << "# std::to_chars not supported" << std::endl;
-#endif
-
   pretty_print(lines, "schubfach", [](const std::vector<double> &lines) {
     double volume = 0;
     char buffer[100];
@@ -224,6 +217,26 @@ void process(std::vector<double> &lines) {
     }
     return volume;
   });
+
+
+#if FROM_CHARS_DOUBLE_SUPPORTED
+  pretty_print(lines, "std::to_chars", [](const std::vector<double> &lines) {
+    double volume = 0;
+    char buffer[100];
+    for (const auto d : lines) {
+      const auto [p, ec] = std::to_chars(buffer, buffer + sizeof(buffer), d);
+      if(ec != std::errc()) {
+        std::cerr << "problem with " << d << std::endl;
+        std::abort();
+      }
+      volume += p - buffer;
+    }
+    return volume;
+  });
+#else
+  std::cout << "# std::to_chars not supported" << std::endl;
+#endif
+
 }
 
 void fileload(const char *filename) {
