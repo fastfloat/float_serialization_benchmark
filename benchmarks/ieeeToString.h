@@ -26,6 +26,9 @@ IEEE754f decode_ieee754(float f);
 IEEE754d decode_ieee754(double f);
 
 // Step 3: convert a decimal exponent and mantissa to a string representation
-int to_chars(uint64_t mantissa, int32_t exponent, bool sign, char* const result);
+template <typename T>
+int to_chars(T mantissa, int32_t exponent, bool sign, char* const result);
+extern template int to_chars<uint32_t>(uint32_t mantissa, int32_t exponent, bool sign, char* const result);
+extern template int to_chars<uint64_t>(uint64_t mantissa, int32_t exponent, bool sign, char* const result);
 
 #endif

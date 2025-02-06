@@ -7,15 +7,17 @@ include(CheckSourceCompiles)
 check_source_compiles(CXX "
 #include <charconv>
 int main(void) {
-    double value = 0;
+    float valuef = 0;
+    double valued = 0;
     const char* ptr;
-    std::from_chars_result result = std::from_chars(ptr, ptr, value, std::chars_format::general);
+    std::from_chars_result result1 = std::from_chars(ptr, ptr, valuef, std::chars_format::general);
+    std::from_chars_result result2 = std::from_chars(ptr, ptr, valued, std::chars_format::general);
     return 0;
 }
-" from_chars_double)
+" from_chars_ok)
 
-if (from_chars_double)
-    target_compile_definitions(benchmark PUBLIC FROM_CHARS_DOUBLE_SUPPORTED=1)
+if (from_chars_ok)
+    target_compile_definitions(benchmark PUBLIC FROM_CHARS_SUPPORTED=1)
 endif()
 
 if (NOT WIN32)

@@ -19,12 +19,12 @@
 #include "double-conversion/double-conversion.h"
 #include "grisu_exact.h"
 #include "dragon4.h"
+#include "schubfach_32.h"
 #include "schubfach_64.h"
+
 #if __has_include("errol.h")
 #include "errol.h"
-#define ERROL_SUPPORTED 1
-#else
-#define ERROL_SUPPORTED 0
+#define ERROL_SUPPORTED
 #endif
 
 #define IEEE_8087
@@ -39,57 +39,61 @@
 #include "random_generators.h"
 #include "ieeeToString.h"
 
-#include <charconv>
+#include <fmt/format.h>
+
 #include <climits>
 #include <cmath>
 #include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <float.h>
-#include <fmt/format.h>
 #include <fstream>
 #include <iostream>
-#include <limits.h>
-#include <stdio.h>
 #include <string>
 #include <vector>
 
-#if FROM_CHARS_DOUBLE_SUPPORTED
+#if FROM_CHARS_SUPPORTED
 #include <charconv>
 #endif
 
 template <typename T>
 void process(const std::vector<T> &lines) {
-  pretty_print(lines, "dragon4", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
+  static_assert(std::is_same_v<T, float> || std::is_same_v<T, double>,
+                "The function currently only supports float or double");
+  using MantissaType = std::conditional_t<std::is_same_v<T, float>,
+                                          uint32_t, uint64_t>;
+  using IEEE754Type = std::conditional_t<std::is_same_v<T, float>,
+                                         IEEE754f, IEEE754d>;
+
+  // No dragon4 implementation optimized for float instead of double ?
+  pretty_print(lines, "dragon4", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     for (const auto d : lines) {
-      uint64_t dmantissa;
+      MantissaType dmantissa;
       int dexp;
-      const IEEE754d fields = decode_ieee754(d);
+      const IEEE754Type fields = decode_ieee754(d);
       dragon4::Dragon4(dmantissa, dexp, fields.mantissa, fields.exponent,
                        true, true);
       char buffer[100];
       volume += to_chars(dmantissa, dexp, fields.sign, buffer);
     }
     return volume;
-  });
+  }, 10);
 
-#if ERROL_SUPPORTED
-  pretty_print(lines, "errol3", [](const std::vector<double> &lines) {
-    double volume = 0;
+#ifdef ERROL_SUPPORTED
+  // No errol3 implementation optimized for float instead of double ?
+  pretty_print(lines, "errol3", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
-      errol3_dtoa(d, buffer); // returns the exponent?
+      errol3_dtoa(d, buffer); // returns the exponent
       volume += std::strlen(buffer);
     }
     return volume;
   });
 #else
   std::cout << "# errol not supported" << std::endl;
-#endif // ERROL_SUPPORTED
+#endif
 
-  pretty_print(lines, "std::to_string", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
+  pretty_print(lines, "std::to_string", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     for (const auto d : lines) {
       const std::string s = std::to_string(d);
       volume += s.size();
@@ -97,8 +101,8 @@ void process(const std::vector<T> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "fmt::format", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
+  pretty_print(lines, "fmt::format", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     for (const auto d : lines) {
       const std::string s = fmt::format("{}", d);
       volume += s.size();
@@ -107,8 +111,9 @@ void process(const std::vector<T> &lines) {
   });
 
 #if NETLIB_SUPPORTED
-  pretty_print(lines, "netlib", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
+  // There's no "ftoa", only "dtoa", so not optimized for float.
+  pretty_print(lines, "netlib", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char *result;
     int decpt, sign;
     char *rve;
@@ -128,8 +133,8 @@ void process(const std::vector<T> &lines) {
   std::cout << "# netlib not supported" << std::endl;
 #endif
 
-  pretty_print(lines, "sprintf", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
+  pretty_print(lines, "sprintf", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       volume += snprintf(buffer, sizeof(buffer), "%g", d);
@@ -137,8 +142,10 @@ void process(const std::vector<T> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "grisu2", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
+  // grisu2::dtoa_impl::grisu2 can take a template type
+  // However, grisu2::to_chars is hardcoded for double.
+  pretty_print(lines, "grisu2", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       const char *newp = grisu2::to_chars(buffer, nullptr, d);
@@ -147,8 +154,8 @@ void process(const std::vector<T> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "grisu_exact", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
+  pretty_print(lines, "grisu_exact", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       auto v = jkj::grisu_exact(d);
@@ -157,54 +164,20 @@ void process(const std::vector<T> &lines) {
     return volume;
   });
 
-#if FROM_CHARS_DOUBLE_SUPPORTED
-  pretty_print(lines, "std::to_chars", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "schubfach", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
-      const auto [p, ec] = std::to_chars(buffer, buffer + sizeof(buffer), d);
-      if(ec != std::errc()) {
-        std::cerr << "problem with " << d << std::endl;
-        std::abort();
-      }
-      volume += p - buffer;
-    }
-    return volume;
-  });
-#else
-  std::cout << "# std::to_chars not supported" << std::endl;
-#endif
-
-#if FROM_CHARS_DOUBLE_SUPPORTED
-  pretty_print(lines, "std::to_chars", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
-    char buffer[100];
-    for (const auto d : lines) {
-      const auto [p, ec] = std::to_chars(buffer, buffer + sizeof(buffer), d);
-      if(ec != std::errc()) {
-        std::cerr << "problem with " << d << std::endl;
-        std::abort();
-      }
-      volume += p - buffer;
-    }
-    return volume;
-  });
-#else
-  std::cout << "# std::to_chars not supported" << std::endl;
-#endif
-
-  pretty_print(lines, "schubfach", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
-    char buffer[100];
-    for (const auto d : lines) {
-      const char *end_ptr = schubfach::Dtoa(buffer, d);
+      const char* end_ptr = std::is_same_v<T, float>
+                                ? schubfach::Ftoa(buffer, d)
+                                : schubfach::Dtoa(buffer, d);
       volume += end_ptr - &buffer[0];
     }
     return volume;
   });
 
-  pretty_print(lines, "dragonbox", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
+  pretty_print(lines, "dragonbox", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       const char *end_ptr = jkj::dragonbox::to_chars(d, buffer);
@@ -213,38 +186,42 @@ void process(const std::vector<T> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "ryu", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
+  pretty_print(lines, "ryu", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
-      volume += d2s_buffered_n(d, buffer);
+      volume += std::is_same_v<T, float> ? f2s_buffered_n(d, buffer)
+                                         : d2s_buffered_n(d, buffer);
     }
     return volume;
   });
 
-  pretty_print(lines, "teju_jagua", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
+  pretty_print(lines, "teju_jagua", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
-      const auto fields = teju::traits_t<double>::teju(d);
-      const bool sign = (*reinterpret_cast<const uint64_t*>(&d) >> 63) & 1;
+      const auto fields = teju::traits_t<T>::teju(d);
+      const bool sign = std::signbit(d);
       volume += to_chars(fields.mantissa, fields.exponent, sign, buffer);
     }
     return volume;
   });
 
-  pretty_print(lines, "double_conversion", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
+  pretty_print(lines, "double_conversion", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
+    constexpr int kBufferSize = 100;
+    char buffer[kBufferSize];
     const double_conversion::DoubleToStringConverter converter(
         double_conversion::DoubleToStringConverter::NO_FLAGS, "inf", "nan", 'e',
         -4, 6, 0, 0);
-    const int kBufferSize = 100;
-    char buffer[kBufferSize];
     double_conversion::StringBuilder builder(buffer, kBufferSize);
 
     for (const auto d : lines) {
       builder.Reset();
-      if (!converter.ToShortest(d, &builder)) {
+      const bool valid = std::is_same_v<T, float>
+                             ? converter.ToShortestSingle(d, &builder)
+                             : converter.ToShortest(d, &builder);
+      if (!valid) {
         std::cerr << "problem with " << d << std::endl;
         std::abort();
       }
@@ -253,8 +230,8 @@ void process(const std::vector<T> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "abseil", [](const std::vector<T> &lines) -> T {
-    T volume = 0;
+  pretty_print(lines, "abseil", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     std::string buffer;
     for (const auto d : lines) {
       buffer.clear();
@@ -264,10 +241,9 @@ void process(const std::vector<T> &lines) {
     return volume;
   });
 
-
-#if FROM_CHARS_DOUBLE_SUPPORTED
-  pretty_print(lines, "std::to_chars", [](const std::vector<double> &lines) {
-    double volume = 0;
+#if FROM_CHARS_SUPPORTED
+  pretty_print(lines, "std::to_chars", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       const auto [p, ec] = std::to_chars(buffer, buffer + sizeof(buffer), d);
@@ -282,7 +258,6 @@ void process(const std::vector<T> &lines) {
 #else
   std::cout << "# std::to_chars not supported" << std::endl;
 #endif
-
 }
 
 void fileload(const char *filename) {
