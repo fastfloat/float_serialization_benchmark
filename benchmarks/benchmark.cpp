@@ -20,6 +20,12 @@
 #include "grisu_exact.h"
 #include "dragon4.h"
 #include "schubfach_64.h"
+#if __has_include("errol.h")
+#include "errol.h"
+#define ERROL_SUPPORTED 1
+#else
+#define ERROL_SUPPORTED 0
+#endif
 
 #define IEEE_8087
 #include "benchutil.h"
@@ -66,7 +72,20 @@ void process(std::vector<double> &lines) {
     }
     return volume;
   });
-
+  
+#if ERROL_SUPPORTED
+  pretty_print(lines, "errol3", [](const std::vector<double> &lines) {
+    double volume = 0;
+    char buffer[100];
+    for (const auto d : lines) {
+      errol3_dtoa(d, buffer); // returns the exponent?
+      volume += std::strlen(buffer);
+    }
+    return volume;
+  });
+#else
+  std::cout << "# errol not supported" << std::endl;
+#endif // ERROL_SUPPORTED
   pretty_print(lines, "std::to_string", [](const std::vector<double> &lines) {
     double volume = 0;
     for (const auto d : lines) {
@@ -135,24 +154,6 @@ void process(std::vector<double> &lines) {
     }
     return volume;
   });
-
-#if FROM_CHARS_DOUBLE_SUPPORTED
-  pretty_print(lines, "std::to_chars", [](const std::vector<double> &lines) {
-    double volume = 0;
-    char buffer[100];
-    for (const auto d : lines) {
-      const auto [p, ec] = std::to_chars(buffer, buffer + sizeof(buffer), d);
-      if(ec != std::errc()) {
-        std::cerr << "problem with " << d << std::endl;
-        std::abort();
-      }
-      volume += p - buffer;
-    }
-    return volume;
-  });
-#else
-  std::cout << "# std::to_chars not supported" << std::endl;
-#endif
 
   pretty_print(lines, "schubfach", [](const std::vector<double> &lines) {
     double volume = 0;
@@ -224,6 +225,26 @@ void process(std::vector<double> &lines) {
     }
     return volume;
   });
+
+
+#if FROM_CHARS_DOUBLE_SUPPORTED
+  pretty_print(lines, "std::to_chars", [](const std::vector<double> &lines) {
+    double volume = 0;
+    char buffer[100];
+    for (const auto d : lines) {
+      const auto [p, ec] = std::to_chars(buffer, buffer + sizeof(buffer), d);
+      if(ec != std::errc()) {
+        std::cerr << "problem with " << d << std::endl;
+        std::abort();
+      }
+      volume += p - buffer;
+    }
+    return volume;
+  });
+#else
+  std::cout << "# std::to_chars not supported" << std::endl;
+#endif
+
 }
 
 void fileload(const char *filename) {

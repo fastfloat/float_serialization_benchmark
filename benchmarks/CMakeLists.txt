@@ -39,5 +39,7 @@ if(teju_has_float128)
 endif()
 target_link_libraries(benchmark PUBLIC dragonbox::dragonbox_to_chars)
 target_link_libraries(benchmark PUBLIC dragon_schubfach_lib)
-
+if(TARGET errol)
+    target_link_libraries(benchmark PUBLIC errol)
+endif()
 target_include_directories(benchmark PUBLIC ${grisu-exact_SOURCE_DIR})

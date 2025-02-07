@@ -6,7 +6,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-cmake_policy(SET CMP0169 OLD) # Prevent warning when using FetchContent_Populate
+if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.30")
+    cmake_policy(SET CMP0169 OLD) # Prevent warning when using FetchContent_Populate
+endif()
 
 include(CheckCXXCompilerFlag)
 unset(FASTPFOR_COMPILER_SUPPORTS_MARCH_NATIVE CACHE)
