@@ -66,7 +66,7 @@ void process(const std::vector<T> &lines) {
   pretty_print(lines, "dragon4", [](const std::vector<T> &lines) -> int {
     int volume = 0;
     for (const auto d : lines) {
-      MantissaType dmantissa;
+      uint64_t dmantissa;
       int dexp;
       const IEEE754Type fields = decode_ieee754(d);
       dragon4::Dragon4(dmantissa, dexp, fields.mantissa, fields.exponent,
@@ -260,21 +260,23 @@ void process(const std::vector<T> &lines) {
 #endif
 }
 
-void fileload(const char *filename) {
+template <typename T>
+void fileload(const std::string &filename) {
   std::ifstream inputfile(filename);
   if (!inputfile) {
     std::cerr << "can't open " << filename << std::endl;
     return;
   }
 
-  std::vector<double> lines;
+  std::vector<T> lines;
   lines.reserve(10000); // let us reserve plenty of memory.
   for (std::string line; getline(inputfile, line);) {
     try {
-      lines.push_back(std::stod(line));
+      lines.push_back(std::is_same_v<T, float> ? std::stof(line)
+                                               : std::stod(line));
     } catch (...) {
-      std::cerr << "problem with " << line << std::endl;
-      std::cerr << "We expect floating-point numbers (one per line)."
+      std::cerr << "problem with " << line << "\n"
+                << "We expect floating-point numbers (one per line)."
                 << std::endl;
       std::abort();
     }
@@ -283,15 +285,16 @@ void fileload(const char *filename) {
   process(lines);
 }
 
-void parse_random_numbers(size_t howmany, std::string random_model) {
+template <typename T>
+void parse_random_numbers(size_t howmany, const std::string &random_model) {
   std::cout << "# parsing random numbers" << std::endl;
-  std::vector<double> lines;
-  auto g = get_generator_by_name(random_model);
-  std::cout << "model: " << g->describe() << std::endl;
-  std::cout << "volume: " << howmany << " floats" << std::endl;
+  std::vector<T> lines;
+  auto g = get_generator_by_name<T>(random_model);
+  std::cout << "model: " << g->describe() << "\n"
+            << "volume: " << howmany << " floats" << std::endl;
   lines.reserve(howmany); // let us reserve plenty of memory.
   for (size_t i = 0; i < howmany; i++) {
-    double line = g->new_float();
+    const T line = g->new_float();
     lines.push_back(line);
   }
   process(lines);
@@ -313,21 +316,33 @@ int main(int argc, char **argv) {
         cxxopts::value<bool>()->default_value("false"))(
         "h,help", "Print usage.");
     const auto result = options.parse(argc, argv);
+
     if (result["help"].as<bool>()) {
       std::cout << options.help() << std::endl;
       return EXIT_SUCCESS;
     }
+
     const bool single = result["single"].as<bool>();
+    std::cout << "number type: " << (single ? "binary32 (float)" : "binary64 (double)") << std::endl;
+
     const auto filename = result["file"].as<std::string>();
     if (filename.empty()) {
-      parse_random_numbers(result["volume"].as<size_t>(),
-                           result["model"].as<std::string>());
-      std::cout << "# You can also provide a filename (with the -f flag): it "
-                   "should contain one "
-                   "string per line corresponding to a number"
+      if(single) {
+        parse_random_numbers<float>(result["volume"].as<size_t>(),
+                                    result["model"].as<std::string>());
+      } else {
+        parse_random_numbers<double>(result["volume"].as<size_t>(),
+                                     result["model"].as<std::string>());
+      }
+      std::cout << "# You can also provide a filename (with the -f flag):"
+                   "it should contain one string per line corresponding to a number"
                 << std::endl;
-    } else {
-      fileload(filename.c_str());
+    }
+    else {
+      if(single)
+        fileload<float>(filename);
+      else
+        fileload<double>(filename);
     }
   } catch (const std::exception &e) {
     std::cout << "error parsing options: " << e.what() << std::endl;
