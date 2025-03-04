@@ -54,9 +54,11 @@
 #endif
 
 template <typename T>
+concept arithmetic_float
+    = std::is_same_v<T, float> || std::is_same_v<T, double>;
+
+template <arithmetic_float T>
 void process(const std::vector<T> &lines) {
-  static_assert(std::is_same_v<T, float> || std::is_same_v<T, double>,
-                "The function currently only supports float or double");
   using MantissaType = std::conditional_t<std::is_same_v<T, float>,
                                           uint32_t, uint64_t>;
   using IEEE754Type = std::conditional_t<std::is_same_v<T, float>,
