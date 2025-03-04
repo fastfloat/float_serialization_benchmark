@@ -5,91 +5,94 @@
 #include <memory>
 #include <random>
 #include <iostream>
+#include <type_traits>
 
+template <typename T>
 struct float_number_generator {
-  virtual double new_float() = 0;
+  virtual T new_float() = 0;
   virtual std::string describe() = 0;
   virtual ~float_number_generator() = default;
 };
 
-struct uniform_generator : float_number_generator {
+template <typename T>
+struct uniform_generator : float_number_generator<T> {
   std::random_device rd;
-  std::mt19937 gen;
-  std::uniform_real_distribution<double> dis;
-  explicit uniform_generator(double a = 0, double b = 1)
+  std::mt19937_64 gen;
+  std::uniform_real_distribution<T> dis;
+  explicit uniform_generator(T a = 0.0, T b = 1.0)
       : rd(), gen(rd()), dis(a, b) {}
   std::string describe() override {
     return std::string("generate random numbers uniformly in the interval [") +
            std::to_string((dis.min)()) + std::string(",") +
            std::to_string((dis.max)()) + std::string("]");
   }
-  double new_float() override { return dis(gen); }
+  T new_float() override { return dis(gen); }
 };
 
-struct integer_uniform_generator : float_number_generator {
+template <typename T>
+struct integer_uniform_generator : float_number_generator<T> {
   std::random_device rd;
-  std::mt19937 gen;
+  std::mt19937_64 gen;
   std::uniform_int_distribution<uint64_t> dis;
   explicit integer_uniform_generator(uint64_t a = 0, uint64_t b = 1)
       : rd(), gen(rd()), dis(a, b) {}
   std::string describe() override {
     return std::string(
-               "generate random untegers numbers uniformly in the interval [") +
+               "generate random integers numbers uniformly in the interval [") +
            std::to_string((dis.min)()) + std::string(",") +
            std::to_string((dis.max)()) + std::string("]");
   }
-  double new_float() override { return dis(gen); }
+  T new_float() override { return dis(gen); }
 };
 
-struct one_over_rand32 : float_number_generator {
+template <typename T>
+struct simple_uniform : float_number_generator<T> {
+  using gen_type = std::conditional_t<sizeof(T) == 4, std::mt19937, std::mt19937_64>;
   std::random_device rd;
-  std::mt19937 gen;
-  explicit one_over_rand32() : rd(), gen(rd()) {}
+  gen_type gen;
+  explicit simple_uniform() : rd(), gen(rd()) {}
+  std::string describe() override { return "rand() / 0xFFFFFFFF "; }
+  T new_float() override {
+    const T x = T(gen()) / gen.max();
+    return x;
+  }
+};
+
+template <typename T>
+struct simple_int : float_number_generator<T> {
+  using gen_type = std::conditional_t<sizeof(T) == 4, std::mt19937, std::mt19937_64>;
+  std::random_device rd;
+  std::mt19937_64 gen;
+  std::string describe() override { return "rand()"; }
+  explicit simple_int() : rd(), gen(rd()) {}
+  T new_float() override { return gen(); }
+};
+
+template <typename T>
+struct one_over_rand : float_number_generator<T> {
+  using gen_type = std::conditional_t<sizeof(T) == 4, std::mt19937, std::mt19937_64>;
+  std::random_device rd;
+  gen_type gen;
+  explicit one_over_rand() : rd(), gen(rd()) {}
   std::string describe() override { return "1 / rand()"; }
-  double new_float() override {
+  T new_float() override {
     auto g = gen();
     while (g == 0) {
       g = gen();
     }
-    double x = 1.0 / double(g);
+    const T x = T(1.0) / T(g);
     return x;
   }
 };
 
-struct simple_uniform32 : float_number_generator {
-  std::random_device rd;
-  std::mt19937 gen;
-  explicit simple_uniform32() : rd(), gen(rd()) {}
-  std::string describe() override { return "rand() / 0xFFFFFFFF "; }
-  double new_float() override {
-    double x = double(gen()) / double((std::mt19937::max)());
-    return x;
-  }
+constexpr std::array<const char*, 5> model_names = {
+  "uniform",      "integer_uniform",
+  "simple_uniform", "simple_int",
+  "one_over_rand"
 };
 
-struct simple_int32 : float_number_generator {
-  std::random_device rd;
-  std::mt19937 gen;
-  explicit simple_int32() : rd(), gen(rd()) {}
-  std::string describe() override { return "rand()"; }
-  double new_float() override { return gen(); }
-};
-
-struct simple_int64 : float_number_generator {
-  std::random_device rd;
-  std::mt19937_64 gen;
-  std::string describe() override { return "rand64()"; }
-  explicit simple_int64() : rd(), gen(rd()) {}
-  double new_float() override { return gen(); }
-};
-
-constexpr std::array<const char*, 6> model_names = {
-  "uniform",          "one_over_rand32",
-  "simple_uniform32", "simple_int32",
-  "int_e_int",        "simple_int64"
-};
-
-inline std::unique_ptr<float_number_generator>
+template <typename T>
+inline std::unique_ptr<float_number_generator<T>>
 get_generator_by_name(std::string name) {
   std::cout << "available models (-m): ";
   for (std::string name : model_names) {
@@ -99,23 +102,23 @@ get_generator_by_name(std::string name) {
 
   // This is naive, but also not very important.
   if (name == "uniform") {
-    return std::unique_ptr<float_number_generator>(new uniform_generator());
+    return std::unique_ptr<float_number_generator<T>>(new uniform_generator<T>());
   }
-  if (name == "one_over_rand32") {
-    return std::unique_ptr<float_number_generator>(new one_over_rand32());
+  if (name == "integer_uniform") {
+    return std::unique_ptr<float_number_generator<T>>(new integer_uniform_generator<T>());
   }
-  if (name == "simple_uniform32") {
-    return std::unique_ptr<float_number_generator>(new simple_uniform32());
+  if (name == "simple_uniform") {
+    return std::unique_ptr<float_number_generator<T>>(new simple_uniform<T>());
   }
-  if (name == "simple_int32") {
-    return std::unique_ptr<float_number_generator>(new simple_int32());
+  if (name == "simple_int") {
+    return std::unique_ptr<float_number_generator<T>>(new simple_int<T>());
   }
-  if (name == "simple_int64") {
-    return std::unique_ptr<float_number_generator>(new simple_int64());
+  if (name == "one_over_rand") {
+    return std::unique_ptr<float_number_generator<T>>(new one_over_rand<T>());
   }
   std::cerr << " I do not recognize " << name << std::endl;
   std::cerr << " Warning: falling back on uniform generator. " << std::endl;
-  return std::unique_ptr<float_number_generator>(new uniform_generator());
+  return std::unique_ptr<float_number_generator<T>>(new uniform_generator<T>());
 }
 
 #endif

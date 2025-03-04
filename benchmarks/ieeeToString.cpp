@@ -3,7 +3,8 @@
 #include <cassert>
 #include <cstring>
 
-#include "ryu/digit_table.h"
+#include "ryu/digit_table.h" // For DIGIT_TABLE
+#include "ryu/common.h" // For decimalLength9
 
 IEEE754f decode_ieee754(float f) {
   const uint32_t& bits = reinterpret_cast<const uint32_t&>(f);
@@ -53,68 +54,78 @@ static inline uint32_t decimalLength17(const uint64_t v) {
 }
 
 // Adapted from the Ryu implementation.
-int to_chars(uint64_t mantissa, int32_t exponent, bool sign, char* const result) {
+template <typename T>
+int to_chars(T mantissa, int32_t exponent, bool sign, char* const result) {
+  constexpr bool is_double = sizeof(T) == 8;
+
   int index = 0;
   if (sign)
     result[index++] = '-';
 
-  uint64_t output = mantissa;
-  const uint32_t olength = decimalLength17(mantissa);
+  const uint32_t olength = is_double ? decimalLength17(mantissa)
+                                     : decimalLength9(mantissa);
 
   // Print the decimal digits.
   // for (uint32_t i = 0; i < olength - 1; ++i) {
-  //   const uint32_t c = output % 10; output /= 10;
+  //   const uint32_t c = mantissa % 10; mantissa /= 10;
   //   result[index + olength - i] = (char) ('0' + c);
   // }
-  // result[index] = '0' + output % 10;
+  // result[index] = '0' + mantissa % 10;
 
   uint32_t i = 0;
-  // We prefer 32-bit operations, even on 64-bit platforms.
-  // We have at most 17 digits, and uint32_t can store 9 digits.
-  // If output doesn't fit into uint32_t, we cut off 8 digits,
-  // so the rest will fit into uint32_t.
-  if ((output >> 32) != 0) {
-    // Expensive 64-bit division.
-    const uint64_t q = output / 100000000;
-    uint32_t output2 = ((uint32_t) output) - 100000000 * ((uint32_t) q);
-    output = q;
+  if constexpr (is_double) {
+    // We prefer 32-bit operations, even on 64-bit platforms.
+    // We have at most 17 digits, and uint32_t can store 9 digits.
+    // If mantissa doesn't fit into uint32_t, we cut off 8 digits,
+    // so the rest will fit into uint32_t.
+    if ((mantissa >> 32) != 0) {
+      // Expensive 64-bit division.
+      const uint64_t q = mantissa / 100'000'000;
+      uint32_t temp = ((uint32_t) mantissa) - 100'000'000 * ((uint32_t) q);
+      mantissa = q;
 
-    const uint32_t c = output2 % 10000;
-    output2 /= 10000;
-    const uint32_t d = output2 % 10000;
-    const uint32_t c0 = (c % 100) << 1;
-    const uint32_t c1 = (c / 100) << 1;
-    const uint32_t d0 = (d % 100) << 1;
-    const uint32_t d1 = (d / 100) << 1;
-    memcpy(result + index + olength - 1, DIGIT_TABLE + c0, 2);
-    memcpy(result + index + olength - 3, DIGIT_TABLE + c1, 2);
-    memcpy(result + index + olength - 5, DIGIT_TABLE + d0, 2);
-    memcpy(result + index + olength - 7, DIGIT_TABLE + d1, 2);
-    i += 8;
+      const uint32_t c = temp % 10000;
+      temp /= 10000;
+      const uint32_t d = temp % 10000;
+      const uint32_t c0 = (c % 100) << 1;
+      const uint32_t c1 = (c / 100) << 1;
+      const uint32_t d0 = (d % 100) << 1;
+      const uint32_t d1 = (d / 100) << 1;
+      memcpy(result + index + olength - 1, DIGIT_TABLE + c0, 2);
+      memcpy(result + index + olength - 3, DIGIT_TABLE + c1, 2);
+      memcpy(result + index + olength - 5, DIGIT_TABLE + d0, 2);
+      memcpy(result + index + olength - 7, DIGIT_TABLE + d1, 2);
+      i += 8;
+    }
   }
-  uint32_t output2 = (uint32_t) output;
-  while (output2 >= 10000) {
-    const uint32_t c = output2 % 10000;
-    output2 /= 10000;
+
+  uint32_t output = (uint32_t) mantissa;
+  while (output >= 10000) {
+#ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
+    const uint32_t c = output - 10000 * (output / 10000);
+#else
+    const uint32_t c = output % 10000;
+#endif
+    output /= 10000;
     const uint32_t c0 = (c % 100) << 1;
     const uint32_t c1 = (c / 100) << 1;
     memcpy(result + index + olength - i - 1, DIGIT_TABLE + c0, 2);
     memcpy(result + index + olength - i - 3, DIGIT_TABLE + c1, 2);
     i += 4;
   }
-  if (output2 >= 100) {
-    const uint32_t c = (output2 % 100) << 1;
-    output2 /= 100;
+  if (output >= 100) {
+    const uint32_t c = (output % 100) << 1;
+    output /= 100;
     memcpy(result + index + olength - i - 1, DIGIT_TABLE + c, 2);
     i += 2;
   }
-  if (output2 >= 10) {
-    const uint32_t c = output2 << 1;
+  if (output >= 10) {
+    const uint32_t c = output << 1;
     // We can't use memcpy here: the decimal dot goes between these two digits.
     result[index + olength - i] = DIGIT_TABLE[c + 1];
     result[index] = DIGIT_TABLE[c];
   } else {
-    result[index] = (char) ('0' + output2);
+    result[index] = (char) ('0' + output);
   }
 
   // Print decimal point if needed.
@@ -133,17 +144,26 @@ int to_chars(uint64_t mantissa, int32_t exponent, bool sign, char* const result)
     exp = -exp;
   }
 
-  if (exp >= 100) {
-    const int32_t c = exp % 10;
-    memcpy(result + index, DIGIT_TABLE + 2 * (exp / 10), 2);
-    result[index + 2] = (char) ('0' + c);
-    index += 3;
-  } else if (exp >= 10) {
-    memcpy(result + index, DIGIT_TABLE + 2 * exp, 2);
-    index += 2;
-  } else {
-    result[index++] = (char) ('0' + exp);
-  }
+  const auto handle_common_cases = [&]() {
+    if (exp >= 10) {
+      memcpy(result + index, DIGIT_TABLE + 2 * exp, 2);
+      index += 2;
+    } else
+      result[index++] = (char)('0' + exp);
+  };
+  if constexpr (is_double) {
+    if (exp >= 100) {
+      const int32_t c = exp % 10;
+      memcpy(result + index, DIGIT_TABLE + 2 * (exp / 10), 2);
+      result[index + 2] = (char) ('0' + c);
+      index += 3;
+    } else
+      handle_common_cases();
+  } else
+    handle_common_cases();
 
   return index;
 }
+
+template int to_chars<uint32_t>(uint32_t, int32_t, bool, char* const);
+template int to_chars<uint64_t>(uint64_t, int32_t, bool, char* const);

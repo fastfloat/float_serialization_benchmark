@@ -19,12 +19,12 @@
 #include "double-conversion/double-conversion.h"
 #include "grisu_exact.h"
 #include "dragon4.h"
+#include "schubfach_32.h"
 #include "schubfach_64.h"
+
 #if __has_include("errol.h")
 #include "errol.h"
-#define ERROL_SUPPORTED 1
-#else
-#define ERROL_SUPPORTED 0
+#define ERROL_SUPPORTED
 #endif
 
 #define IEEE_8087
@@ -39,55 +39,63 @@
 #include "random_generators.h"
 #include "ieeeToString.h"
 
-#include <charconv>
+#include <fmt/format.h>
+
 #include <climits>
 #include <cmath>
 #include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <float.h>
-#include <fmt/format.h>
 #include <fstream>
 #include <iostream>
-#include <limits.h>
-#include <stdio.h>
 #include <string>
 #include <vector>
 
-#if FROM_CHARS_DOUBLE_SUPPORTED
+#if FROM_CHARS_SUPPORTED
 #include <charconv>
 #endif
 
-void process(std::vector<double> &lines) {
-  pretty_print(lines, "dragon4", [](const std::vector<double> &lines) {
-    double volume = 0;
+template <typename T>
+concept arithmetic_float
+    = std::is_same_v<T, float> || std::is_same_v<T, double>;
+
+template <arithmetic_float T>
+void process(const std::vector<T> &lines) {
+  using MantissaType = std::conditional_t<std::is_same_v<T, float>,
+                                          uint32_t, uint64_t>;
+  using IEEE754Type = std::conditional_t<std::is_same_v<T, float>,
+                                         IEEE754f, IEEE754d>;
+
+  // No dragon4 implementation optimized for float instead of double ?
+  pretty_print(lines, "dragon4", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     for (const auto d : lines) {
       uint64_t dmantissa;
       int dexp;
-      const IEEE754d fields = decode_ieee754(d);
+      const IEEE754Type fields = decode_ieee754(d);
       dragon4::Dragon4(dmantissa, dexp, fields.mantissa, fields.exponent,
                        true, true);
       char buffer[100];
       volume += to_chars(dmantissa, dexp, fields.sign, buffer);
     }
     return volume;
-  });
-  
-#if ERROL_SUPPORTED
-  pretty_print(lines, "errol3", [](const std::vector<double> &lines) {
-    double volume = 0;
+  }, 10);
+
+#ifdef ERROL_SUPPORTED
+  // No errol3 implementation optimized for float instead of double ?
+  pretty_print(lines, "errol3", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
-      errol3_dtoa(d, buffer); // returns the exponent?
+      errol3_dtoa(d, buffer); // returns the exponent
       volume += std::strlen(buffer);
     }
     return volume;
   });
 #else
   std::cout << "# errol not supported" << std::endl;
-#endif // ERROL_SUPPORTED
-  pretty_print(lines, "std::to_string", [](const std::vector<double> &lines) {
-    double volume = 0;
+#endif
+
+  pretty_print(lines, "std::to_string", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     for (const auto d : lines) {
       const std::string s = std::to_string(d);
       volume += s.size();
@@ -95,8 +103,8 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "fmt::format", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "fmt::format", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     for (const auto d : lines) {
       const std::string s = fmt::format("{}", d);
       volume += s.size();
@@ -105,8 +113,9 @@ void process(std::vector<double> &lines) {
   });
 
 #if NETLIB_SUPPORTED
-  pretty_print(lines, "netlib", [](const std::vector<double> &lines) {
-    double volume = 0;
+  // There's no "ftoa", only "dtoa", so not optimized for float.
+  pretty_print(lines, "netlib", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char *result;
     int decpt, sign;
     char *rve;
@@ -126,8 +135,8 @@ void process(std::vector<double> &lines) {
   std::cout << "# netlib not supported" << std::endl;
 #endif
 
-  pretty_print(lines, "sprintf", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "sprintf", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       volume += snprintf(buffer, sizeof(buffer), "%g", d);
@@ -135,8 +144,10 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "grisu2", [](const std::vector<double> &lines) {
-    double volume = 0;
+  // grisu2::dtoa_impl::grisu2 can take a template type
+  // However, grisu2::to_chars is hardcoded for double.
+  pretty_print(lines, "grisu2", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       const char *newp = grisu2::to_chars(buffer, nullptr, d);
@@ -145,8 +156,8 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "grisu_exact", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "grisu_exact", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       auto v = jkj::grisu_exact(d);
@@ -155,18 +166,20 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "schubfach", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "schubfach", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
-      const char *end_ptr = schubfach::Dtoa(buffer, d);
+      const char* end_ptr = std::is_same_v<T, float>
+                                ? schubfach::Ftoa(buffer, d)
+                                : schubfach::Dtoa(buffer, d);
       volume += end_ptr - &buffer[0];
     }
     return volume;
   });
 
-  pretty_print(lines, "dragonbox", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "dragonbox", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       const char *end_ptr = jkj::dragonbox::to_chars(d, buffer);
@@ -175,38 +188,42 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "ryu", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "ryu", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
-      volume += d2s_buffered_n(d, buffer);
+      volume += std::is_same_v<T, float> ? f2s_buffered_n(d, buffer)
+                                         : d2s_buffered_n(d, buffer);
     }
     return volume;
   });
 
-  pretty_print(lines, "teju_jagua", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "teju_jagua", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
-      const auto fields = teju::traits_t<double>::teju(d);
-      const bool sign = (*reinterpret_cast<const uint64_t*>(&d) >> 63) & 1;
+      const auto fields = teju::traits_t<T>::teju(d);
+      const bool sign = std::signbit(d);
       volume += to_chars(fields.mantissa, fields.exponent, sign, buffer);
     }
     return volume;
   });
 
-  pretty_print(lines, "double_conversion", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "double_conversion", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
+    constexpr int kBufferSize = 100;
+    char buffer[kBufferSize];
     const double_conversion::DoubleToStringConverter converter(
         double_conversion::DoubleToStringConverter::NO_FLAGS, "inf", "nan", 'e',
         -4, 6, 0, 0);
-    const int kBufferSize = 100;
-    char buffer[kBufferSize];
     double_conversion::StringBuilder builder(buffer, kBufferSize);
 
     for (const auto d : lines) {
       builder.Reset();
-      if (!converter.ToShortest(d, &builder)) {
+      const bool valid = std::is_same_v<T, float>
+                             ? converter.ToShortestSingle(d, &builder)
+                             : converter.ToShortest(d, &builder);
+      if (!valid) {
         std::cerr << "problem with " << d << std::endl;
         std::abort();
       }
@@ -215,8 +232,8 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-  pretty_print(lines, "abseil", [](const std::vector<double> &lines) {
-    double volume = 0;
+  pretty_print(lines, "abseil", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     std::string buffer;
     for (const auto d : lines) {
       buffer.clear();
@@ -226,10 +243,9 @@ void process(std::vector<double> &lines) {
     return volume;
   });
 
-
-#if FROM_CHARS_DOUBLE_SUPPORTED
-  pretty_print(lines, "std::to_chars", [](const std::vector<double> &lines) {
-    double volume = 0;
+#if FROM_CHARS_SUPPORTED
+  pretty_print(lines, "std::to_chars", [](const std::vector<T> &lines) -> int {
+    int volume = 0;
     char buffer[100];
     for (const auto d : lines) {
       const auto [p, ec] = std::to_chars(buffer, buffer + sizeof(buffer), d);
@@ -244,24 +260,25 @@ void process(std::vector<double> &lines) {
 #else
   std::cout << "# std::to_chars not supported" << std::endl;
 #endif
-
 }
 
-void fileload(const char *filename) {
+template <typename T>
+void fileload(const std::string &filename) {
   std::ifstream inputfile(filename);
   if (!inputfile) {
     std::cerr << "can't open " << filename << std::endl;
     return;
   }
 
-  std::vector<double> lines;
+  std::vector<T> lines;
   lines.reserve(10000); // let us reserve plenty of memory.
   for (std::string line; getline(inputfile, line);) {
     try {
-      lines.push_back(std::stod(line));
+      lines.push_back(std::is_same_v<T, float> ? std::stof(line)
+                                               : std::stod(line));
     } catch (...) {
-      std::cerr << "problem with " << line << std::endl;
-      std::cerr << "We expect floating-point numbers (one per line)."
+      std::cerr << "problem with " << line << "\n"
+                << "We expect floating-point numbers (one per line)."
                 << std::endl;
       std::abort();
     }
@@ -270,15 +287,16 @@ void fileload(const char *filename) {
   process(lines);
 }
 
-void parse_random_numbers(size_t howmany, std::string random_model) {
+template <typename T>
+void parse_random_numbers(size_t howmany, const std::string &random_model) {
   std::cout << "# parsing random numbers" << std::endl;
-  std::vector<double> lines;
-  auto g = get_generator_by_name(random_model);
-  std::cout << "model: " << g->describe() << std::endl;
-  std::cout << "volume: " << howmany << " floats" << std::endl;
+  std::vector<T> lines;
+  auto g = get_generator_by_name<T>(random_model);
+  std::cout << "model: " << g->describe() << "\n"
+            << "volume: " << howmany << " floats" << std::endl;
   lines.reserve(howmany); // let us reserve plenty of memory.
   for (size_t i = 0; i < howmany; i++) {
-    double line = g->new_float();
+    const T line = g->new_float();
     lines.push_back(line);
   }
   process(lines);
@@ -296,22 +314,37 @@ int main(int argc, char **argv) {
         cxxopts::value<size_t>()->default_value("100000"))(
         "m,model", "Random Model.",
         cxxopts::value<std::string>()->default_value("uniform"))(
+        "s,single", "Use single precision instead of double.",
+        cxxopts::value<bool>()->default_value("false"))(
         "h,help", "Print usage.");
-    auto result = options.parse(argc, argv);
+    const auto result = options.parse(argc, argv);
+
     if (result["help"].as<bool>()) {
       std::cout << options.help() << std::endl;
       return EXIT_SUCCESS;
     }
-    auto filename = result["file"].as<std::string>();
+
+    const bool single = result["single"].as<bool>();
+    std::cout << "number type: " << (single ? "binary32 (float)" : "binary64 (double)") << std::endl;
+
+    const auto filename = result["file"].as<std::string>();
     if (filename.empty()) {
-      parse_random_numbers(result["volume"].as<size_t>(),
-                           result["model"].as<std::string>());
-      std::cout << "# You can also provide a filename (with the -f flag): it "
-                   "should contain one "
-                   "string per line corresponding to a number"
+      if(single) {
+        parse_random_numbers<float>(result["volume"].as<size_t>(),
+                                    result["model"].as<std::string>());
+      } else {
+        parse_random_numbers<double>(result["volume"].as<size_t>(),
+                                     result["model"].as<std::string>());
+      }
+      std::cout << "# You can also provide a filename (with the -f flag):"
+                   "it should contain one string per line corresponding to a number"
                 << std::endl;
-    } else {
-      fileload(filename.c_str());
+    }
+    else {
+      if(single)
+        fileload<float>(filename);
+      else
+        fileload<double>(filename);
     }
   } catch (const std::exception &e) {
     std::cout << "error parsing options: " << e.what() << std::endl;
