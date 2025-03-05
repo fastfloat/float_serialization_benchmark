@@ -47,6 +47,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <variant>
 #include <vector>
 
 #if FROM_CHARS_SUPPORTED
@@ -58,38 +59,42 @@ concept arithmetic_float
     = std::is_same_v<T, float> || std::is_same_v<T, double>;
 
 template <arithmetic_float T>
-void process(const std::vector<T> &lines) {
+void process(const std::vector<T> &lines, bool useDragon4, bool useErrol3) {
   using MantissaType = std::conditional_t<std::is_same_v<T, float>,
                                           uint32_t, uint64_t>;
   using IEEE754Type = std::conditional_t<std::is_same_v<T, float>,
                                          IEEE754f, IEEE754d>;
 
   // No dragon4 implementation optimized for float instead of double ?
-  pretty_print(lines, "dragon4", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    for (const auto d : lines) {
-      uint64_t dmantissa;
-      int dexp;
-      const IEEE754Type fields = decode_ieee754(d);
-      dragon4::Dragon4(dmantissa, dexp, fields.mantissa, fields.exponent,
-                       true, true);
-      char buffer[100];
-      volume += to_chars(dmantissa, dexp, fields.sign, buffer);
-    }
-    return volume;
-  }, 10);
+  if(useDragon4) {
+    pretty_print(lines, "dragon4", [](const std::vector<T> &lines) -> int {
+      int volume = 0;
+      for (const auto d : lines) {
+        uint64_t dmantissa;
+        int dexp;
+        const IEEE754Type fields = decode_ieee754(d);
+        dragon4::Dragon4(dmantissa, dexp, fields.mantissa, fields.exponent,
+                         true, true);
+        char buffer[100];
+        volume += to_chars(dmantissa, dexp, fields.sign, buffer);
+      }
+      return volume;
+    }, 10);
+  }
 
 #ifdef ERROL_SUPPORTED
   // No errol3 implementation optimized for float instead of double ?
-  pretty_print(lines, "errol3", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    char buffer[100];
-    for (const auto d : lines) {
-      errol3_dtoa(d, buffer); // returns the exponent
-      volume += std::strlen(buffer);
-    }
-    return volume;
-  });
+  if(useErrol3) {
+    pretty_print(lines, "errol3", [](const std::vector<T> &lines) -> int {
+      int volume = 0;
+      char buffer[100];
+      for (const auto d : lines) {
+        errol3_dtoa(d, buffer); // returns the exponent
+        volume += std::strlen(buffer);
+      }
+      return volume;
+    });
+  }
 #else
   std::cout << "# errol not supported" << std::endl;
 #endif
@@ -263,11 +268,11 @@ void process(const std::vector<T> &lines) {
 }
 
 template <typename T>
-void fileload(const std::string &filename) {
+std::vector<T> fileload(const std::string &filename) {
   std::ifstream inputfile(filename);
   if (!inputfile) {
     std::cerr << "can't open " << filename << std::endl;
-    return;
+    return {};
   }
 
   std::vector<T> lines;
@@ -284,11 +289,12 @@ void fileload(const std::string &filename) {
     }
   }
   std::cout << "# read " << lines.size() << " lines " << std::endl;
-  process(lines);
+  return lines;
 }
 
 template <typename T>
-void parse_random_numbers(size_t howmany, const std::string &random_model) {
+std::vector<T> get_random_numbers(size_t howmany,
+                                  const std::string &random_model) {
   std::cout << "# parsing random numbers" << std::endl;
   std::vector<T> lines;
   auto g = get_generator_by_name<T>(random_model);
@@ -299,7 +305,7 @@ void parse_random_numbers(size_t howmany, const std::string &random_model) {
     const T line = g->new_float();
     lines.push_back(line);
   }
-  process(lines);
+  return lines;
 }
 
 cxxopts::Options
@@ -316,6 +322,10 @@ int main(int argc, char **argv) {
         cxxopts::value<std::string>()->default_value("uniform"))(
         "s,single", "Use single precision instead of double.",
         cxxopts::value<bool>()->default_value("false"))(
+        "d,dragon", "Enable dragon4 (current impl. triggers some asserts)",
+        cxxopts::value<bool>()->default_value("false"))(
+        "e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0)",
+        cxxopts::value<bool>()->default_value("false"))(
         "h,help", "Print usage.");
     const auto result = options.parse(argc, argv);
 
@@ -324,28 +334,33 @@ int main(int argc, char **argv) {
       return EXIT_SUCCESS;
     }
 
+    const bool useDragon4 = result["dragon"].as<bool>();
+    const bool useErrol3 = result["errol"].as<bool>();
+
     const bool single = result["single"].as<bool>();
     std::cout << "number type: " << (single ? "binary32 (float)" : "binary64 (double)") << std::endl;
 
+    std::variant<std::vector<float>, std::vector<double>> numbers;
     const auto filename = result["file"].as<std::string>();
     if (filename.empty()) {
-      if(single) {
-        parse_random_numbers<float>(result["volume"].as<size_t>(),
-                                    result["model"].as<std::string>());
-      } else {
-        parse_random_numbers<double>(result["volume"].as<size_t>(),
-                                     result["model"].as<std::string>());
-      }
+      const auto volume = result["volume"].as<size_t>();
+      const auto model = result["model"].as<std::string>();
+      if(single)
+        numbers = get_random_numbers<float>(volume, model);
+      else
+        numbers = get_random_numbers<double>(volume, model);
       std::cout << "# You can also provide a filename (with the -f flag):"
                    "it should contain one string per line corresponding to a number"
                 << std::endl;
     }
     else {
       if(single)
-        fileload<float>(filename);
+        numbers = fileload<float>(filename);
       else
-        fileload<double>(filename);
+        numbers = fileload<double>(filename);
     }
+
+    std::visit([&](auto &&arg) { process(arg, useDragon4, useErrol3); }, numbers);
   } catch (const std::exception &e) {
     std::cout << "error parsing options: " << e.what() << std::endl;
     return EXIT_FAILURE;
