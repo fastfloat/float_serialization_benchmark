@@ -15,18 +15,27 @@ int main(void) {
     return 0;
 }
 " from_chars_ok)
-
-if (from_chars_ok)
-    target_compile_definitions(benchmark PUBLIC FROM_CHARS_SUPPORTED=1)
-endif()
+target_compile_definitions(benchmark PUBLIC FROM_CHARS_SUPPORTED=$<IF:${from_chars_ok},1,0>)
 
 if (NOT WIN32)
     target_link_libraries(benchmark PUBLIC netlib)
     target_compile_definitions(benchmark PUBLIC NETLIB_SUPPORTED=1)
+else()
+    target_compile_definitions(benchmark PUBLIC NETLIB_SUPPORTED=0)
 endif()
 
 if (NOT CYGWIN)
-    target_link_libraries(benchmark PUBLIC absl::strings)
+    target_link_libraries(benchmark PUBLIC absl::strings absl::str_format)
+    target_compile_definitions(benchmark PUBLIC ABSEIL_SUPPORTED=1)
+else()
+    target_compile_definitions(benchmark PUBLIC ABSEIL_SUPPORTED=0)
+endif()
+
+if(TARGET errol)
+    target_link_libraries(benchmark PUBLIC errol)
+    target_compile_definitions(benchmark PUBLIC ERROL_SUPPORTED=1)
+else()
+    target_compile_definitions(benchmark PUBLIC ERROL_SUPPORTED=0)
 endif()
 
 target_link_libraries(benchmark PUBLIC fmt)
@@ -41,7 +50,4 @@ if(teju_has_float128)
 endif()
 target_link_libraries(benchmark PUBLIC dragonbox::dragonbox_to_chars)
 target_link_libraries(benchmark PUBLIC dragon_schubfach_lib)
-if(TARGET errol)
-    target_link_libraries(benchmark PUBLIC errol)
-endif()
 target_include_directories(benchmark PUBLIC ${grisu-exact_SOURCE_DIR})

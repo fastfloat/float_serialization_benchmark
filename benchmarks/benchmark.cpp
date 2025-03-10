@@ -7,39 +7,11 @@
  * data generated.
  */
 
-// Teju Jagua
-#include "cpp/common/traits.hpp"
-
-#ifndef __CYGWIN__
-#include "absl/strings/str_cat.h"
-#endif
-
-#include "dragonbox/dragonbox_to_chars.h"
-#include "ryu/ryu.h"
-#include "double-conversion/double-conversion.h"
-#include "grisu_exact.h"
-#include "dragon4.h"
-#include "schubfach_32.h"
-#include "schubfach_64.h"
-
-#if __has_include("errol.h")
-#include "errol.h"
-#define ERROL_SUPPORTED
-#endif
-
+#include "algorithms.h"
 #define IEEE_8087
 #include "benchutil.h"
 #include "cxxopts.hpp"
-
-#if NETLIB_SUPPORTED
-#include "gdtoa.h"
-#endif
-
-#include "grisu2.h"
 #include "random_generators.h"
-#include "ieeeToString.h"
-
-#include <fmt/format.h>
 
 #include <climits>
 #include <cmath>
@@ -48,223 +20,32 @@
 #include <iostream>
 #include <string>
 #include <variant>
-#include <vector>
 
-#if FROM_CHARS_SUPPORTED
-#include <charconv>
-#endif
-
-template <typename T>
-concept arithmetic_float
-    = std::is_same_v<T, float> || std::is_same_v<T, double>;
+using Benchmarks::arithmetic_float;
+using Benchmarks::BenchArgs;
 
 template <arithmetic_float T>
-void process(const std::vector<T> &lines, bool useDragon4, bool useErrol3) {
-  using MantissaType = std::conditional_t<std::is_same_v<T, float>,
-                                          uint32_t, uint64_t>;
-  using IEEE754Type = std::conditional_t<std::is_same_v<T, float>,
-                                         IEEE754f, IEEE754d>;
-
-  // No dragon4 implementation optimized for float instead of double ?
-  if(useDragon4) {
-    pretty_print(lines, "dragon4", [](const std::vector<T> &lines) -> int {
+void process(const std::vector<T> &lines,
+             const std::array<BenchArgs<T>, Benchmarks::COUNT> &args) {
+  auto testWrapper = [](const std::vector<T> &lines, const std::string &name,
+                        int (*func)(T, std::span<char> &), int repeat = 1) {
+    pretty_print(lines, name, [func, repeat](const std::vector<T> &lines) -> int {
       int volume = 0;
-      for (const auto d : lines) {
-        uint64_t dmantissa;
-        int dexp;
-        const IEEE754Type fields = decode_ieee754(d);
-        dragon4::Dragon4(dmantissa, dexp, fields.mantissa, fields.exponent,
-                         true, true);
-        char buffer[100];
-        volume += to_chars(dmantissa, dexp, fields.sign, buffer);
-      }
+      char buf[100];
+      std::span<char> bufspan(buf, sizeof(buf));
+      for (const auto d : lines)
+        volume += func(d, bufspan);
       return volume;
-    }, 10);
+    }, repeat);
+  };
+
+  for (const auto &algo : args) {
+    if (!algo.used) {
+      std::cout << "# skipping " << algo.name << std::endl;
+      continue;
+    }
+    testWrapper(lines, algo.name, algo.func, algo.testRepeat);
   }
-
-#ifdef ERROL_SUPPORTED
-  // No errol3 implementation optimized for float instead of double ?
-  if(useErrol3) {
-    pretty_print(lines, "errol3", [](const std::vector<T> &lines) -> int {
-      int volume = 0;
-      char buffer[100];
-      for (const auto d : lines) {
-        errol3_dtoa(d, buffer); // returns the exponent
-        volume += std::strlen(buffer);
-      }
-      return volume;
-    });
-  }
-#else
-  std::cout << "# errol not supported" << std::endl;
-#endif
-
-  pretty_print(lines, "std::to_string", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    for (const auto d : lines) {
-      const std::string s = std::to_string(d);
-      volume += s.size();
-    }
-    return volume;
-  });
-
-  pretty_print(lines, "fmt::format", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    for (const auto d : lines) {
-      const std::string s = fmt::format("{}", d);
-      volume += s.size();
-    }
-    return volume;
-  });
-
-#if NETLIB_SUPPORTED
-  // There's no "ftoa", only "dtoa", so not optimized for float.
-  pretty_print(lines, "netlib", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    char *result;
-    int decpt, sign;
-    char *rve;
-    for (const auto d : lines) {
-      char *result = dtoa(d, 0, 0, &decpt, &sign, &rve);
-      if (result) {
-        volume += (rve - result);
-        freedtoa(result);
-      } else {
-        std::cerr << "problem with " << d << std::endl;
-        std::abort();
-      }
-    }
-    return volume;
-  }, 10);
-#else
-  std::cout << "# netlib not supported" << std::endl;
-#endif
-
-  pretty_print(lines, "sprintf", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    char buffer[100];
-    for (const auto d : lines) {
-      volume += snprintf(buffer, sizeof(buffer), "%g", d);
-    }
-    return volume;
-  });
-
-  // grisu2::dtoa_impl::grisu2 can take a template type
-  // However, grisu2::to_chars is hardcoded for double.
-  pretty_print(lines, "grisu2", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    char buffer[100];
-    for (const auto d : lines) {
-      const char *newp = grisu2::to_chars(buffer, nullptr, d);
-      volume += newp - buffer;
-    }
-    return volume;
-  });
-
-  pretty_print(lines, "grisu_exact", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    char buffer[100];
-    for (const auto d : lines) {
-      auto v = jkj::grisu_exact(d);
-      volume += to_chars(v.significand, v.exponent, v.is_negative, buffer);
-    }
-    return volume;
-  });
-
-  pretty_print(lines, "schubfach", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    char buffer[100];
-    for (const auto d : lines) {
-      const char* end_ptr = std::is_same_v<T, float>
-                                ? schubfach::Ftoa(buffer, d)
-                                : schubfach::Dtoa(buffer, d);
-      volume += end_ptr - &buffer[0];
-    }
-    return volume;
-  });
-
-  pretty_print(lines, "dragonbox", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    char buffer[100];
-    for (const auto d : lines) {
-      const char *end_ptr = jkj::dragonbox::to_chars(d, buffer);
-      volume += end_ptr - &buffer[0];
-    }
-    return volume;
-  });
-
-  pretty_print(lines, "ryu", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    char buffer[100];
-    for (const auto d : lines) {
-      volume += std::is_same_v<T, float> ? f2s_buffered_n(d, buffer)
-                                         : d2s_buffered_n(d, buffer);
-    }
-    return volume;
-  });
-
-  pretty_print(lines, "teju_jagua", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    char buffer[100];
-    for (const auto d : lines) {
-      const auto fields = teju::traits_t<T>::teju(d);
-      const bool sign = std::signbit(d);
-      volume += to_chars(fields.mantissa, fields.exponent, sign, buffer);
-    }
-    return volume;
-  });
-
-  pretty_print(lines, "double_conversion", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    constexpr int kBufferSize = 100;
-    char buffer[kBufferSize];
-    const double_conversion::DoubleToStringConverter converter(
-        double_conversion::DoubleToStringConverter::NO_FLAGS, "inf", "nan", 'e',
-        -4, 6, 0, 0);
-    double_conversion::StringBuilder builder(buffer, kBufferSize);
-
-    for (const auto d : lines) {
-      builder.Reset();
-      const bool valid = std::is_same_v<T, float>
-                             ? converter.ToShortestSingle(d, &builder)
-                             : converter.ToShortest(d, &builder);
-      if (!valid) {
-        std::cerr << "problem with " << d << std::endl;
-        std::abort();
-      }
-      volume += strlen(builder.Finalize());
-    }
-    return volume;
-  });
-
-  pretty_print(lines, "abseil", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    std::string buffer;
-    for (const auto d : lines) {
-      buffer.clear();
-      absl::StrAppend(&buffer, d);
-      volume += buffer.size();
-    }
-    return volume;
-  });
-
-#if FROM_CHARS_SUPPORTED
-  pretty_print(lines, "std::to_chars", [](const std::vector<T> &lines) -> int {
-    int volume = 0;
-    char buffer[100];
-    for (const auto d : lines) {
-      const auto [p, ec] = std::to_chars(buffer, buffer + sizeof(buffer), d);
-      if(ec != std::errc()) {
-        std::cerr << "problem with " << d << std::endl;
-        std::abort();
-      }
-      volume += p - buffer;
-    }
-    return volume;
-  });
-#else
-  std::cout << "# std::to_chars not supported" << std::endl;
-#endif
 }
 
 template <typename T>
@@ -334,33 +115,64 @@ int main(int argc, char **argv) {
       return EXIT_SUCCESS;
     }
 
-    const bool useDragon4 = result["dragon"].as<bool>();
-    const bool useErrol3 = result["errol"].as<bool>();
-
     const bool single = result["single"].as<bool>();
-    std::cout << "number type: " << (single ? "binary32 (float)" : "binary64 (double)") << std::endl;
+    std::cout << "number type: binary"
+              << (single ? "32 (float)" : "64 (double)") << std::endl;
 
     std::variant<std::vector<float>, std::vector<double>> numbers;
     const auto filename = result["file"].as<std::string>();
     if (filename.empty()) {
       const auto volume = result["volume"].as<size_t>();
       const auto model = result["model"].as<std::string>();
-      if(single)
+      if (single)
         numbers = get_random_numbers<float>(volume, model);
       else
         numbers = get_random_numbers<double>(volume, model);
-      std::cout << "# You can also provide a filename (with the -f flag):"
+      std::cout << "# You can also provide a filename (with the -f flag): "
                    "it should contain one string per line corresponding to a number"
                 << std::endl;
     }
     else {
-      if(single)
+      if (single)
         numbers = fileload<float>(filename);
       else
         numbers = fileload<double>(filename);
     }
 
-    std::visit([&](auto &&arg) { process(arg, useDragon4, useErrol3); }, numbers);
+    auto initArgs = [&](auto type) {
+      using T = decltype(type);
+      std::array<BenchArgs<T>, Benchmarks::COUNT> args;
+      args[Benchmarks::DRAGON4]           = { "dragon4"           , Benchmarks::dragon4<T>           , result["dragon"].as<bool>()   , 10 };
+      args[Benchmarks::ERROL3]            = { "errol3"            , Benchmarks::errol3<T>            , result["errol"].as<bool>() };
+      args[Benchmarks::TO_STRING]         = { "std::to_string"    , Benchmarks::to_string<T>         , ERROL_SUPPORTED };
+      args[Benchmarks::FMT_FORMAT]        = { "fmt::format"       , Benchmarks::fmt_format<T>        , true };
+      args[Benchmarks::NETLIB]            = { "netlib"            , Benchmarks::netlib<T>            , NETLIB_SUPPORTED              , 10 };
+      args[Benchmarks::SNPRINTF]          = { "snprintf"          , Benchmarks::snprintf<T>          , true };
+      args[Benchmarks::GRISU2]            = { "grisu2"            , Benchmarks::grisu2<T>            , true };
+      args[Benchmarks::GRISU_EXACT]       = { "grisu_exact"       , Benchmarks::grisu_exact<T>       , true };
+      args[Benchmarks::SCHUBFACH]         = { "schubfach"         , Benchmarks::schubfach<T>         , true };
+      args[Benchmarks::DRAGONBOX]         = { "dragonbox"         , Benchmarks::dragonbox<T>         , true };
+      args[Benchmarks::RYU]               = { "ryu"               , Benchmarks::ryu<T>               , true };
+      args[Benchmarks::TEJU_JAGUA]        = { "teju_jagua"        , Benchmarks::teju_jagua<T>        , true };
+      args[Benchmarks::DOUBLE_CONVERSION] = { "double_conversion" , Benchmarks::double_conversion<T> , true };
+      args[Benchmarks::ABSEIL]            = { "abseil"            , Benchmarks::abseil<T>            , ABSEIL_SUPPORTED };
+      args[Benchmarks::STD_TO_CHARS]      = { "std::to_chars"     , Benchmarks::std_to_chars<T>      , FROM_CHARS_SUPPORTED };
+      return args;
+    };
+
+    std::variant<std::array<BenchArgs<float>, Benchmarks::COUNT>,
+                 std::array<BenchArgs<double>, Benchmarks::COUNT>> algorithms;
+    if (single)
+      algorithms = initArgs(float{});
+    else
+      algorithms = initArgs(double{});
+
+    std::visit([](const auto &lines, const auto &args) {
+      using T1 = typename std::decay_t<decltype(lines)>::value_type;
+      using T2 = typename std::decay_t<decltype(args)>::value_type::Type;
+      if constexpr (std::is_same_v<T1, T2>)
+        process(lines, args);
+    }, numbers, algorithms);
   } catch (const std::exception &e) {
     std::cout << "error parsing options: " << e.what() << std::endl;
     return EXIT_FAILURE;
