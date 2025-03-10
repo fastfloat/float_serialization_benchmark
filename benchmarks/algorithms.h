@@ -117,10 +117,33 @@ int netlib(T d, std::span<char>& buffer) {
   char* rve;
   char* result = dtoa(d, 0, 0, &decpt, &sign, &rve);
   if (result) {
-    const int volume = rve - result;
-    std::copy(result, rve, buffer.begin());
+    int i = 0;
+    if (sign)
+      buffer[i++] = '-';
+    if (decpt > 0) {
+      // Integer part
+      const int integer_digits = std::min(decpt, static_cast<int>(rve - result));
+      std::copy_n(result, integer_digits, buffer.data() + i);
+      i += integer_digits;
+    } else {
+      // Number is < 1 (e.g., 0.000123)
+      buffer[i++] = '0';
+      buffer[i++] = '.';
+      std::fill_n(buffer.data() + i, -decpt, '0'); // Add leading zeros
+      i += -decpt;
+    }
+
+    // Fractional part (if any remaining digits)
+    const int remaining_digits = rve - (result + std::max(0, decpt));
+    if (remaining_digits > 0) {
+      if (decpt > 0)
+        buffer[i++] = '.';
+      std::copy_n(result + std::max(0, decpt), remaining_digits, buffer.data() + i);
+      i += remaining_digits;
+    }
+
     freedtoa(result);
-    return volume;
+    return i;
   } else {
     std::cerr << "problem with " << d << std::endl;
     std::abort();
