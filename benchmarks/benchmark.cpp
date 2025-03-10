@@ -13,6 +13,7 @@
 #include "cxxopts.hpp"
 #include "random_generators.h"
 
+#include <cassert>
 #include <climits>
 #include <cmath>
 #include <cstdio>
@@ -25,26 +26,62 @@ using Benchmarks::arithmetic_float;
 using Benchmarks::BenchArgs;
 
 template <arithmetic_float T>
-void process(const std::vector<T> &lines,
-             const std::array<BenchArgs<T>, Benchmarks::COUNT> &args) {
-  auto testWrapper = [](const std::vector<T> &lines, const std::string &name,
-                        int (*func)(T, std::span<char> &), int repeat = 1) {
-    pretty_print(lines, name, [func, repeat](const std::vector<T> &lines) -> int {
-      int volume = 0;
-      char buf[100];
-      std::span<char> bufspan(buf, sizeof(buf));
-      for (const auto d : lines)
-        volume += func(d, bufspan);
-      return volume;
-    }, repeat);
-  };
+void evaluateProperties(const std::vector<T> &lines,
+                        const std::array<BenchArgs<T>, Benchmarks::COUNT> &args) {
+  constexpr auto precision = std::numeric_limits<T>::digits10;
+  fmt::println("{:20} {:20}", "Algorithm", "Valid round-trip");
 
   for (const auto &algo : args) {
     if (!algo.used) {
       std::cout << "# skipping " << algo.name << std::endl;
       continue;
     }
-    testWrapper(lines, algo.name, algo.func, algo.testRepeat);
+
+    char buf1[100], buf2[100];
+    std::span<char> bufRef(buf1, sizeof(buf1)), bufAlgo(buf2, sizeof(buf2));
+    int incorrect = 0;
+    for (const auto d : lines) {
+      // Reference output
+      const int vRef = Benchmarks::std_to_chars(d, bufRef);
+      bufRef[vRef] = '\0';
+      T dRef;
+      auto [ptr, ec] = std::from_chars(bufRef.data(), bufRef.data() + vRef, dRef);
+      assert(ptr == bufRef.data() + vRef);
+      assert(ec == std::errc());
+      assert(d == dRef);
+
+      // Tested algorithm output
+      const int vAlgo = algo.func(d, bufAlgo);
+      bufAlgo[vAlgo] = '\0';
+      T dAlgo;
+      auto [ptrAlgo, ecAlgo] = std::from_chars(bufAlgo.data(), bufAlgo.data() + vAlgo, dAlgo);
+      assert(ptrAlgo == bufAlgo.data() + vAlgo);
+      assert(ecAlgo == std::errc());
+      if ((incorrect += (d != dAlgo)) == 1)
+        fmt::println("\t{:20} mismatch: d = {:.17f}, bufRef = {}, bufAlgo = {}, dAlgo = {:.17f}",
+                     algo.name, d, bufRef.data(), bufAlgo.data(), dAlgo);
+    }
+    fmt::println("{:20} {:20}", algo.name, incorrect == 0 ? "yes" : "no");
+  }
+}
+
+template <arithmetic_float T>
+void process(const std::vector<T> &lines,
+             const std::array<BenchArgs<T>, Benchmarks::COUNT> &args) {
+  for (const auto &algo : args) {
+    if (!algo.used) {
+      std::cout << "# skipping " << algo.name << std::endl;
+      continue;
+    }
+
+    pretty_print(lines, algo.name, [&algo](const std::vector<T> &lines) -> int {
+      int volume = 0;
+      char buf[100];
+      std::span<char> bufspan(buf, sizeof(buf));
+      for (const auto d : lines)
+        volume += algo.func(d, bufspan);
+      return volume;
+    }, algo.testRepeat);
   }
 }
 
@@ -103,9 +140,11 @@ int main(int argc, char **argv) {
         cxxopts::value<std::string>()->default_value("uniform"))(
         "s,single", "Use single precision instead of double.",
         cxxopts::value<bool>()->default_value("false"))(
-        "d,dragon", "Enable dragon4 (current impl. triggers some asserts)",
+        "t,test", "Test the algorithms and find their properties.",
         cxxopts::value<bool>()->default_value("false"))(
-        "e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0)",
+        "d,dragon", "Enable dragon4 (current impl. triggers some asserts).",
+        cxxopts::value<bool>()->default_value("false"))(
+        "e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0).",
         cxxopts::value<bool>()->default_value("false"))(
         "h,help", "Print usage.");
     const auto result = options.parse(argc, argv);
@@ -167,11 +206,16 @@ int main(int argc, char **argv) {
     else
       algorithms = initArgs(double{});
 
-    std::visit([](const auto &lines, const auto &args) {
+    const bool test = result["test"].as<bool>();
+    std::visit([test](const auto &lines, const auto &args) {
       using T1 = typename std::decay_t<decltype(lines)>::value_type;
       using T2 = typename std::decay_t<decltype(args)>::value_type::Type;
-      if constexpr (std::is_same_v<T1, T2>)
-        process(lines, args);
+      if constexpr (std::is_same_v<T1, T2>) {
+        if (test)
+          evaluateProperties(lines, args);
+        else
+          process(lines, args);
+      }
     }, numbers, algorithms);
   } catch (const std::exception &e) {
     std::cout << "error parsing options: " << e.what() << std::endl;
