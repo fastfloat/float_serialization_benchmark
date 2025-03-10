@@ -2,7 +2,7 @@
 #define ALGORITHMS_H
 
 #ifndef __CYGWIN__
-#include "absl/strings/str_cat.h"
+#include "absl/strings/str_format.h"
 #endif
 
 #if ERROL_SUPPORTED
@@ -155,7 +155,7 @@ int netlib(T d, std::span<char>& buffer) {
 
 template<arithmetic_float T>
 int snprintf(T d, std::span<char>& buffer) {
-  return std::snprintf(buffer.data(), buffer.size(), "%g", d);
+  return std::snprintf(buffer.data(), buffer.size(), "%.17g", d);
 }
 
 // grisu2::dtoa_impl::grisu2 can take a template type
@@ -219,11 +219,12 @@ int double_conversion(T d, std::span<char>& buffer) {
 
 template<arithmetic_float T>
 int abseil(T d, std::span<char>& buffer) {
-  std::string s;
-  absl::StrAppend(&s, d);
-  std::copy(s.begin(), s.end(), buffer.begin());
-  return size(s);
-  // return absl::SNPrintF(buffer.data(), buffer.size(), "%g", d);
+  // StrAppend is faster but only outputs 6 digits after the decimal point
+  // std::string s;
+  // absl::StrAppend(&s, d);
+  // std::copy(s.begin(), s.end(), buffer.begin());
+  // return size(s);
+  return absl::SNPrintF(buffer.data(), buffer.size(), "%.17g", d);
 }
 
 template<arithmetic_float T>
