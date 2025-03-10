@@ -105,14 +105,13 @@ CPMAddPackage(
 )
 
 if(NOT WIN32)
-CPMAddPackage(
-  NAME errol
-  GITHUB_REPOSITORY marcandrysco/Errol
-  GIT_TAG 5364de4
-  DOWNLOAD_ONLY ON
-)
+  CPMAddPackage(
+    NAME errol
+    GITHUB_REPOSITORY marcandrysco/Errol
+    GIT_TAG 5364de4
+    DOWNLOAD_ONLY ON
+  )
 
-
-add_library(errol STATIC "${errol_SOURCE_DIR}/lib/errol.c")
-target_include_directories(errol SYSTEM PUBLIC "${errol_SOURCE_DIR}/lib")
+  add_library(errol STATIC "${errol_SOURCE_DIR}/lib/errol.c")
+  target_include_directories(errol SYSTEM PUBLIC "${errol_SOURCE_DIR}/lib")
 endif()
