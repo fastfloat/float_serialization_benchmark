@@ -15,7 +15,7 @@ int main(void) {
     return 0;
 }
 " from_chars_ok)
-target_compile_definitions(benchmark PUBLIC FROM_CHARS_SUPPORTED=$<IF:${from_chars_ok},1,0>)
+target_compile_definitions(benchmark PUBLIC FROM_CHARS_SUPPORTED=$<IF:$<BOOL:${from_chars_ok}>,1,0>)
 
 if (NOT WIN32)
     target_link_libraries(benchmark PUBLIC netlib)

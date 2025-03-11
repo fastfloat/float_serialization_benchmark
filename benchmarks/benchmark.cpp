@@ -25,6 +25,7 @@
 using Benchmarks::arithmetic_float;
 using Benchmarks::BenchArgs;
 
+#if FROM_CHARS_SUPPORTED
 template <arithmetic_float T>
 void evaluateProperties(const std::vector<T> &lines,
                         const std::array<BenchArgs<T>, Benchmarks::COUNT> &args) {
@@ -49,7 +50,6 @@ void evaluateProperties(const std::vector<T> &lines,
       assert(ptr == bufRef.data() + vRef);
       assert(ec == std::errc());
       assert(d == dRef);
-
       // Tested algorithm output
       const int vAlgo = algo.func(d, bufAlgo);
       bufAlgo[vAlgo] = '\0';
@@ -64,6 +64,7 @@ void evaluateProperties(const std::vector<T> &lines,
     fmt::println("{:20} {:20}", algo.name, incorrect == 0 ? "yes" : "no");
   }
 }
+#endif // FROM_CHARS_SUPPORTED
 
 template <arithmetic_float T>
 void process(const std::vector<T> &lines,
@@ -139,10 +140,12 @@ int main(int argc, char **argv) {
         "m,model", "Random Model.",
         cxxopts::value<std::string>()->default_value("uniform"))(
         "s,single", "Use single precision instead of double.",
-        cxxopts::value<bool>()->default_value("false"))(
-        "t,test", "Test the algorithms and find their properties.",
-        cxxopts::value<bool>()->default_value("false"))(
-        "d,dragon", "Enable dragon4 (current impl. triggers some asserts).",
+        cxxopts::value<bool>()->default_value("false"))
+#if FROM_CHARS_SUPPORTED
+        ("t,test", "Test the algorithms and find their properties.",
+        cxxopts::value<bool>()->default_value("false"))
+#endif // FROM_CHARS_SUPPORTED
+        ("d,dragon", "Enable dragon4 (current impl. triggers some asserts).",
         cxxopts::value<bool>()->default_value("false"))(
         "e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0).",
         cxxopts::value<bool>()->default_value("false"))(
@@ -211,9 +214,11 @@ int main(int argc, char **argv) {
       using T1 = typename std::decay_t<decltype(lines)>::value_type;
       using T2 = typename std::decay_t<decltype(args)>::value_type::Type;
       if constexpr (std::is_same_v<T1, T2>) {
+#if FROM_CHARS_SUPPORTED
         if (test)
           evaluateProperties(lines, args);
         else
+#endif // FROM_CHARS_SUPPORTED
           process(lines, args);
       }
     }, numbers, algorithms);
