@@ -21,11 +21,14 @@
 #include <iostream>
 #include <string>
 #include <variant>
+#include <fast_float/fast_float.h>
+#if FROM_CHARS_SUPPORTED || TO_CHARS_SUPPORTED
+#include <charconv> // technically included by "algorithms.h"
+#endif
 
 using Benchmarks::arithmetic_float;
 using Benchmarks::BenchArgs;
 
-#if FROM_CHARS_SUPPORTED
 template <arithmetic_float T>
 void evaluateProperties(const std::vector<T> &lines,
                         const std::array<BenchArgs<T>, Benchmarks::COUNT> &args) {
@@ -46,7 +49,9 @@ void evaluateProperties(const std::vector<T> &lines,
       const int vRef = Benchmarks::std_to_chars(d, bufRef);
       bufRef[vRef] = '\0';
       T dRef;
-      auto [ptr, ec] = std::from_chars(bufRef.data(), bufRef.data() + vRef, dRef);
+      // We prefer fast_float::from_chars over std::from_chars because it is more
+      // likely to be available.
+      auto [ptr, ec] = fast_float::from_chars(bufRef.data(), bufRef.data() + vRef, dRef);
       assert(ptr == bufRef.data() + vRef);
       assert(ec == std::errc());
       assert(d == dRef);
@@ -54,7 +59,7 @@ void evaluateProperties(const std::vector<T> &lines,
       const int vAlgo = algo.func(d, bufAlgo);
       bufAlgo[vAlgo] = '\0';
       T dAlgo;
-      auto [ptrAlgo, ecAlgo] = std::from_chars(bufAlgo.data(), bufAlgo.data() + vAlgo, dAlgo);
+      auto [ptrAlgo, ecAlgo] = fast_float::from_chars(bufAlgo.data(), bufAlgo.data() + vAlgo, dAlgo);
       assert(ptrAlgo == bufAlgo.data() + vAlgo);
       assert(ecAlgo == std::errc());
       if ((incorrect += (d != dAlgo)) == 1)
@@ -64,7 +69,6 @@ void evaluateProperties(const std::vector<T> &lines,
     fmt::println("{:20} {:20}", algo.name, incorrect == 0 ? "yes" : "no");
   }
 }
-#endif // FROM_CHARS_SUPPORTED
 
 template <arithmetic_float T>
 void process(const std::vector<T> &lines,
@@ -133,23 +137,22 @@ cxxopts::Options
 
 int main(int argc, char **argv) {
   try {
-    options.add_options()("f,file", "File name.",
-                          cxxopts::value<std::string>()->default_value(""))(
-        "v,volume", "Volume (number of floats generated).",
-        cxxopts::value<size_t>()->default_value("100000"))(
-        "m,model", "Random Model.",
-        cxxopts::value<std::string>()->default_value("uniform"))(
-        "s,single", "Use single precision instead of double.",
+    options.add_options()
+        ("f,file", "File name.",
+        cxxopts::value<std::string>()->default_value(""))
+        ("v,volume", "Volume (number of floats generated).",
+        cxxopts::value<size_t>()->default_value("100000"))
+        ("m,model", "Random Model.",
+        cxxopts::value<std::string>()->default_value("uniform"))
+        ("s,single", "Use single precision instead of double.",
         cxxopts::value<bool>()->default_value("false"))
-#if FROM_CHARS_SUPPORTED
         ("t,test", "Test the algorithms and find their properties.",
         cxxopts::value<bool>()->default_value("false"))
-#endif // FROM_CHARS_SUPPORTED
         ("d,dragon", "Enable dragon4 (current impl. triggers some asserts).",
-        cxxopts::value<bool>()->default_value("false"))(
-        "e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0).",
-        cxxopts::value<bool>()->default_value("false"))(
-        "h,help", "Print usage.");
+        cxxopts::value<bool>()->default_value("false"))
+        ("e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0).",
+        cxxopts::value<bool>()->default_value("false"))
+        ("h,help", "Print usage.");
     const auto result = options.parse(argc, argv);
 
     if (result["help"].as<bool>()) {
@@ -198,7 +201,7 @@ int main(int argc, char **argv) {
       args[Benchmarks::TEJU_JAGUA]        = { "teju_jagua"        , Benchmarks::teju_jagua<T>        , true };
       args[Benchmarks::DOUBLE_CONVERSION] = { "double_conversion" , Benchmarks::double_conversion<T> , true };
       args[Benchmarks::ABSEIL]            = { "abseil"            , Benchmarks::abseil<T>            , ABSEIL_SUPPORTED };
-      args[Benchmarks::STD_TO_CHARS]      = { "std::to_chars"     , Benchmarks::std_to_chars<T>      , FROM_CHARS_SUPPORTED };
+      args[Benchmarks::STD_TO_CHARS]      = { "std::to_chars"     , Benchmarks::std_to_chars<T>      , TO_CHARS_SUPPORTED };
       return args;
     };
 
@@ -214,11 +217,9 @@ int main(int argc, char **argv) {
       using T1 = typename std::decay_t<decltype(lines)>::value_type;
       using T2 = typename std::decay_t<decltype(args)>::value_type::Type;
       if constexpr (std::is_same_v<T1, T2>) {
-#if FROM_CHARS_SUPPORTED
         if (test)
           evaluateProperties(lines, args);
         else
-#endif // FROM_CHARS_SUPPORTED
           process(lines, args);
       }
     }, numbers, algorithms);

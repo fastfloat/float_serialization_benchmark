@@ -9,7 +9,7 @@
 #include "errol.h"
 #endif
 
-#if FROM_CHARS_SUPPORTED
+#if TO_CHARS_SUPPORTED
 #include <charconv>
 #endif
 
@@ -229,7 +229,7 @@ int abseil(T d, std::span<char>& buffer) {
 
 template<arithmetic_float T>
 int std_to_chars(T d, std::span<char>& buffer) {
-#if FROM_CHARS_SUPPORTED
+#if TO_CHARS_SUPPORTED
   const auto [p, ec]
       = std::to_chars(buffer.data(), buffer.data() + buffer.size(), d);
   if (ec != std::errc()) {
