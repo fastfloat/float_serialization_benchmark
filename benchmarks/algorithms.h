@@ -26,6 +26,7 @@
 #include "dragon4.h"
 #include "dragonbox/dragonbox_to_chars.h"
 #include "grisu2.h"
+#include "grisu3.h"
 #include "grisu_exact.h"
 #include "ieeeToString.h"
 #include "ryu/ryu.h"
@@ -50,7 +51,8 @@ enum Algorithm {
   DOUBLE_CONVERSION = 12,
   ABSEIL = 13,
   STD_TO_CHARS = 14,
-  COUNT = 15
+  GRISU3 = 15,
+  COUNT = 16,
 };
 
 template<typename T>
@@ -158,11 +160,17 @@ int snprintf(T d, std::span<char>& buffer) {
   return std::snprintf(buffer.data(), buffer.size(), "%.17g", d);
 }
 
-// grisu2::dtoa_impl::grisu2 can take a template type
-// However, grisu2::to_chars is hardcoded for double.
+// grisu2 is hardcoded for double.
 template<arithmetic_float T>
 int grisu2(T d, std::span<char>& buffer) {
-  const char* newp = grisu2::to_chars(buffer.data(), nullptr, d);
+  const char* newp = grisu2::Dtoa(buffer.data(), d);
+  return newp - buffer.data();
+}
+
+// grisu3 is hardcoded for double.
+template<arithmetic_float T>
+int grisu3(T d, std::span<char>& buffer) {
+  const char* newp = grisu3::Dtoa(buffer.data(), d);
   return newp - buffer.data();
 }
 
