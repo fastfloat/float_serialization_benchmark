@@ -149,7 +149,12 @@ int main(int argc, char **argv) {
         ("t,test", "Test the algorithms and find their properties.",
         cxxopts::value<bool>()->default_value("false"))
         ("d,dragon", "Enable dragon4 (current impl. triggers some asserts).",
+#ifdef NDEBUG
+        cxxopts::value<bool>()->default_value("true"))
+#else // NDEBUG
+        // dragon4 is not safe in debug mode: some asserts fire.
         cxxopts::value<bool>()->default_value("false"))
+#endif
         ("e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0).",
         cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage.");
@@ -202,6 +207,7 @@ int main(int argc, char **argv) {
       args[Benchmarks::DOUBLE_CONVERSION] = { "double_conversion" , Benchmarks::double_conversion<T> , true };
       args[Benchmarks::ABSEIL]            = { "abseil"            , Benchmarks::abseil<T>            , ABSEIL_SUPPORTED };
       args[Benchmarks::STD_TO_CHARS]      = { "std::to_chars"     , Benchmarks::std_to_chars<T>      , TO_CHARS_SUPPORTED };
+      args[Benchmarks::GRISU3]            = { "grisu3"            , Benchmarks::grisu3<T>            , true };
       return args;
     };
 

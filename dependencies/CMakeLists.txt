@@ -1,7 +1,7 @@
 if(NOT WIN32)
     add_subdirectory(netlib)
 endif()
-add_subdirectory(grisu2)
+#add_subdirectory(grisu2)
 
 include(FetchContent)
 include(ExternalProject)
@@ -14,7 +14,7 @@ if (NOT CYGWIN)
 
     FetchContent_Declare(abseil
          GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
-         GIT_TAG "d7aaad8")
+         GIT_TAG "d9e4955") # Abseil LTS branch, January 2025, Patch 1
     FetchContent_GetProperties(abseil)
     if(NOT abseil_POPULATED)
         set(BUILD_TESTING OFF)
@@ -30,7 +30,7 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 FetchContent_Declare(
         doubleconversion
         GIT_REPOSITORY https://github.com/google/double-conversion.git
-        GIT_TAG "v3.1.5"
+        GIT_TAG "v3.3.1"
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(doubleconversion)
@@ -38,7 +38,7 @@ FetchContent_MakeAvailable(doubleconversion)
 FetchContent_Declare(
         teju_jagua
         GIT_REPOSITORY https://github.com/jaja360/teju_jagua.git
-        GIT_TAG main
+        GIT_TAG e62fcfc418170cdcba0fc842dcb5e93ead428ba6
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(teju_jagua)
@@ -55,7 +55,7 @@ endif()
 FetchContent_Declare(
         ryu
         GIT_REPOSITORY https://github.com/ulfjack/ryu
-        GIT_TAG master
+        GIT_TAG 1264a946ba66eab320e927bfd2362e0c8580c42f
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(ryu)
@@ -63,7 +63,7 @@ FetchContent_MakeAvailable(ryu)
 FetchContent_Declare(
         grisu-exact
         GIT_REPOSITORY https://github.com/jk-jeon/Grisu-Exact
-        GIT_TAG master
+        GIT_TAG 4279e63faa301c03112f56f9ee4ed8bdff947fee
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(grisu-exact)
@@ -80,7 +80,7 @@ FetchContent_MakeAvailable(dragonbox)
 FetchContent_Declare(
         drachennest # for schubfach and dragon4
         GIT_REPOSITORY https://github.com/abolz/Drachennest.git
-        GIT_TAG master
+        GIT_TAG e6714a39ad331b4489d0b6aaf3968635bff4eb5e
         GIT_SHALLOW TRUE
 )
 FetchContent_GetProperties(drachennest)
@@ -92,12 +92,15 @@ add_library(dragon_schubfach_lib STATIC
     ${drachennest_SOURCE_DIR}/src/dragon4.cc
     ${drachennest_SOURCE_DIR}/src/schubfach_32.cc
     ${drachennest_SOURCE_DIR}/src/schubfach_64.cc
+    ${drachennest_SOURCE_DIR}/src/grisu3.cc
+    ${drachennest_SOURCE_DIR}/src/grisu2.cc
+
 )
 target_include_directories(dragon_schubfach_lib PUBLIC
     ${drachennest_SOURCE_DIR}/src
 )
 
-CPMAddPackage("gh:fmtlib/fmt#11.0.2")
+CPMAddPackage("gh:fmtlib/fmt#11.1.4")
 CPMAddPackage(
   GITHUB_REPOSITORY jarro2783/cxxopts
   VERSION 3.2.0
