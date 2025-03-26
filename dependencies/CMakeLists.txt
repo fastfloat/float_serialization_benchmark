@@ -1,6 +1,7 @@
 if(NOT WIN32)
     add_subdirectory(netlib)
 endif()
+add_subdirectory(yy_double)
 #add_subdirectory(grisu2)
 find_library(MATH_LIBRARY m)
 include(FetchContent)
