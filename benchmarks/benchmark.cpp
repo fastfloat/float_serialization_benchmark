@@ -22,9 +22,6 @@
 #include <string>
 #include <variant>
 #include <fast_float/fast_float.h>
-#if FROM_CHARS_SUPPORTED || TO_CHARS_SUPPORTED
-#include <charconv> // technically included by "algorithms.h"
-#endif
 
 using Benchmarks::arithmetic_float;
 using Benchmarks::BenchArgs;

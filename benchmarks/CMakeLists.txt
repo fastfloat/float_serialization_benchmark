@@ -21,7 +21,7 @@ check_source_compiles(CXX "
 int main(void) {
     float valuef = 0;
     double valued = 0;
-    const char* ptr;
+    char* ptr;
     std::to_chars_result result1 = std::to_chars(ptr, ptr, valuef);
     std::to_chars_result result2 = std::to_chars(ptr, ptr, valued);
     return 0;
