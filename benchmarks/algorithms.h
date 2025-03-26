@@ -32,6 +32,7 @@
 #include "ryu/ryu.h"
 #include "schubfach_32.h"
 #include "schubfach_64.h"
+#include "yy_double.h"
 
 namespace Benchmarks {
 
@@ -52,7 +53,8 @@ enum Algorithm {
   ABSEIL = 13,
   STD_TO_CHARS = 14,
   GRISU3 = 15,
-  COUNT = 16,
+  YY_DOUBLE = 16,
+  COUNT = 17,
 };
 
 template<typename T>
@@ -223,6 +225,13 @@ int double_conversion(T d, std::span<char>& buffer) {
     std::abort();
   }
   return strlen(builder.Finalize());
+}
+
+// No yy_float implementation
+template<arithmetic_float T>
+int yy_double(T d, std::span<char>& buffer) {
+  const char* end_ptr = yy_double_to_string(d, buffer.data());
+  return end_ptr - buffer.data();
 }
 
 template<arithmetic_float T>
