@@ -32,8 +32,12 @@
 #include "ryu/ryu.h"
 #include "schubfach_32.h"
 #include "schubfach_64.h"
+#if (__SIZEOF_INT128__ == 16) && (defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER))
 #include "yy_double.h"
-
+#define YY_DOUBLE_SUPPORTED 1
+#else
+#define YY_DOUBLE_SUPPORTED 0
+#endif
 namespace Benchmarks {
 
 enum Algorithm {
@@ -54,7 +58,7 @@ enum Algorithm {
   STD_TO_CHARS = 14,
   GRISU3 = 15,
   YY_DOUBLE = 16,
-  COUNT = 17,
+  COUNT // Keep last
 };
 
 template<typename T>
@@ -92,6 +96,7 @@ int errol3(T d, std::span<char>& buffer) {
   errol3_dtoa(d, buffer.data());  // returns the exponent
   return std::strlen(buffer.data());
 #else
+  std::cerr << "errol3 not supported" << std::endl;
   std::abort();
 #endif
 }
@@ -150,6 +155,7 @@ int netlib(T d, std::span<char>& buffer) {
     std::abort();
   }
 #else
+  std::cerr << "netlib not supported" << std::endl;
   std::abort();
 #endif
 }
@@ -224,11 +230,15 @@ int double_conversion(T d, std::span<char>& buffer) {
   return strlen(builder.Finalize());
 }
 
-// No yy_float implementation
 template<arithmetic_float T>
 int yy_double(T d, std::span<char>& buffer) {
+#if YY_DOUBLE_SUPPORTED
   const char* end_ptr = yy_double_to_string(d, buffer.data());
   return end_ptr - buffer.data();
+#else
+  std::cerr << "yy_double not supported" << std::endl;
+  std::abort();
+#endif
 }
 
 template<arithmetic_float T>
@@ -252,6 +262,7 @@ int std_to_chars(T d, std::span<char>& buffer) {
   }
   return p - buffer.data();
 #else
+  std::cerr << "std::to_chars not supported" << std::endl;
   std::abort();
 #endif
 }

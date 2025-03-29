@@ -75,7 +75,6 @@ void process(const std::vector<T> &lines,
       std::cout << "# skipping " << algo.name << std::endl;
       continue;
     }
-
     pretty_print(lines, algo.name, [&algo](const std::vector<T> &lines) -> int {
       int volume = 0;
       char buf[100];
@@ -198,7 +197,7 @@ int main(int argc, char **argv) {
       args[Benchmarks::ABSEIL]            = { "abseil"            , Benchmarks::abseil<T>            , ABSEIL_SUPPORTED };
       args[Benchmarks::STD_TO_CHARS]      = { "std::to_chars"     , Benchmarks::std_to_chars<T>      , TO_CHARS_SUPPORTED };
       args[Benchmarks::GRISU3]            = { "grisu3"            , Benchmarks::grisu3<T>            , true };
-      args[Benchmarks::YY_DOUBLE]         = { "yy_double"         , Benchmarks::yy_double<T>         , true };
+      args[Benchmarks::YY_DOUBLE]         = { "yy_double"         , Benchmarks::yy_double<T>         , YY_DOUBLE_SUPPORTED };
       return args;
     };
 
