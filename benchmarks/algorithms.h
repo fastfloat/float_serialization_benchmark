@@ -22,8 +22,8 @@
 #include <span>
 
 #include "cpp/common/traits.hpp"  // Teju Jagua
+#include "PrintFloat.h"  // Dragon4
 #include "double-conversion/double-conversion.h"
-#include "dragon4.h"
 #include "dragonbox/dragonbox_to_chars.h"
 #include "grisu2.h"
 #include "grisu3.h"
@@ -73,17 +73,14 @@ struct BenchArgs {
   unsigned char testRepeat{100};
 };
 
-// No dragon4 implementation optimized for float instead of double ?
 template<arithmetic_float T>
 int dragon4(T d, std::span<char>& buffer) {
-  using IEEE754Type
-      = std::conditional_t<std::is_same_v<T, float>, IEEE754f, IEEE754d>;
-  const IEEE754Type fields = decode_ieee754(d);
-
-  uint64_t dm;
-  int dexp;
-  dragon4::Dragon4(dm, dexp, fields.mantissa, fields.exponent, true, true);
-  return to_chars(dm, dexp, fields.sign, buffer.data());
+  if constexpr (std::is_same_v<T, float>)
+    return PrintFloat32(buffer.data(), buffer.size(), d,
+                        PrintFloatFormat_Positional, -1);
+  else
+    return PrintFloat64(buffer.data(), buffer.size(), d,
+                        PrintFloatFormat_Positional, -1);
 }
 
 // No errol3 implementation optimized for float instead of double ?

@@ -6,7 +6,7 @@ numbers, i.e., converting them from an IEEE 754 binary representation to a
 string decimal representation.
 
 Currently, the following approaches are compared:
-  - [dragon4](https://github.com/abolz/Drachennest/blob/master/src/dragon4.cc)
+  - [dragon4](https://github.com/ahaldane/Dragon4)
   - [std::to_string](https://en.cppreference.com/w/cpp/string/basic_string/to_string)
   - [fmt::format](https://github.com/fmtlib/fmt)
   - [netlib](https://github.com/jwiegley/gdtoa)
