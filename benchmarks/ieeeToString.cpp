@@ -1,5 +1,6 @@
 #include "ieeeToString.h"
 
+#include <bit>
 #include <cassert>
 #include <cstring>
 
@@ -7,7 +8,7 @@
 #include "ryu/common.h" // For decimalLength9
 
 IEEE754f decode_ieee754(float f) {
-  const uint32_t& bits = reinterpret_cast<const uint32_t&>(f);
+  const uint32_t bits = std::bit_cast<uint32_t>(f);
 
   IEEE754f decomposed;
   decomposed.exponent = (bits >> FloatMantissaBits) & ((1 << FloatExponentBits) - 1);
@@ -17,7 +18,7 @@ IEEE754f decode_ieee754(float f) {
 }
 
 IEEE754d decode_ieee754(double f) {
-  const uint64_t& bits = reinterpret_cast<const uint64_t&>(f);
+  const uint64_t bits = std::bit_cast<uint64_t>(f);
 
   IEEE754d decomposed;
   decomposed.exponent = (bits >> DoubleMantissaBits) & ((1ull << DoubleExponentBits) - 1);

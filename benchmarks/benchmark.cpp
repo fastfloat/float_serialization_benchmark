@@ -145,13 +145,6 @@ int main(int argc, char **argv) {
         cxxopts::value<bool>()->default_value("false"))
         ("t,test", "Test the algorithms and find their properties.",
         cxxopts::value<bool>()->default_value("false"))
-        ("d,dragon", "Enable dragon4 (current impl. triggers some asserts).",
-#ifdef NDEBUG
-        cxxopts::value<bool>()->default_value("true"))
-#else // NDEBUG
-        // dragon4 is not safe in debug mode: some asserts fire.
-        cxxopts::value<bool>()->default_value("false"))
-#endif
         ("e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0).",
         cxxopts::value<bool>()->default_value("false"))
         ("h,help", "Print usage.");
@@ -189,7 +182,7 @@ int main(int argc, char **argv) {
     auto initArgs = [&](auto type) {
       using T = decltype(type);
       std::array<BenchArgs<T>, Benchmarks::COUNT> args;
-      args[Benchmarks::DRAGON4]           = { "dragon4"           , Benchmarks::dragon4<T>           , result["dragon"].as<bool>()   , 10 };
+      args[Benchmarks::DRAGON4]           = { "dragon4"           , Benchmarks::dragon4<T>           , true                          , 10 };
       args[Benchmarks::ERROL3]            = { "errol3"            , Benchmarks::errol3<T>            , result["errol"].as<bool>() };
       args[Benchmarks::TO_STRING]         = { "std::to_string"    , Benchmarks::to_string<T>         , ERROL_SUPPORTED };
       args[Benchmarks::FMT_FORMAT]        = { "fmt::format"       , Benchmarks::fmt_format<T>        , true };

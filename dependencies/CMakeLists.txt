@@ -78,7 +78,27 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(dragonbox)
 
 FetchContent_Declare(
-        drachennest # for schubfach and dragon4
+        dragon4
+        GIT_REPOSITORY https://github.com/ahaldane/Dragon4.git
+        GIT_TAG 670a3827651c68c9f329d394898b1204cb5ec46f
+        GIT_SHALLOW TRUE
+)
+FetchContent_GetProperties(dragon4)
+if(NOT dragon4)
+  FetchContent_Populate(dragon4)  # Downloads code to ${dragon4_SOURCE_DIR}
+endif()
+set(dragon4_SOURCE_DIR ${dragon4_SOURCE_DIR} PARENT_SCOPE)
+add_library(dragon4_lib STATIC
+    ${dragon4_SOURCE_DIR}/Dragon4.cpp
+    ${dragon4_SOURCE_DIR}/Math.cpp
+    ${dragon4_SOURCE_DIR}/PrintFloat.cpp
+)
+target_include_directories(dragon4_lib PUBLIC
+    ${dragon4_SOURCE_DIR}
+)
+
+FetchContent_Declare(
+        drachennest # for schubfach
         GIT_REPOSITORY https://github.com/abolz/Drachennest.git
         GIT_TAG e6714a39ad331b4489d0b6aaf3968635bff4eb5e
         GIT_SHALLOW TRUE
@@ -94,7 +114,6 @@ add_library(dragon_schubfach_lib STATIC
     ${drachennest_SOURCE_DIR}/src/schubfach_64.cc
     ${drachennest_SOURCE_DIR}/src/grisu3.cc
     ${drachennest_SOURCE_DIR}/src/grisu2.cc
-
 )
 target_include_directories(dragon_schubfach_lib PUBLIC
     ${drachennest_SOURCE_DIR}/src
