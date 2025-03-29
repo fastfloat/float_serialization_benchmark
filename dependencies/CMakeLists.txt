@@ -2,7 +2,7 @@ if(NOT WIN32)
     add_subdirectory(netlib)
 endif()
 #add_subdirectory(grisu2)
-
+find_library(MATH_LIBRARY m)
 include(FetchContent)
 include(ExternalProject)
 
@@ -79,8 +79,8 @@ FetchContent_MakeAvailable(dragonbox)
 
 FetchContent_Declare(
         dragon4
-        GIT_REPOSITORY https://github.com/ahaldane/Dragon4.git
-        GIT_TAG 670a3827651c68c9f329d394898b1204cb5ec46f
+        GIT_REPOSITORY https://github.com/lemire/Dragon4.git
+        GIT_TAG 0ce72aa
         GIT_SHALLOW TRUE
 )
 FetchContent_GetProperties(dragon4)
@@ -90,9 +90,13 @@ endif()
 set(dragon4_SOURCE_DIR ${dragon4_SOURCE_DIR} PARENT_SCOPE)
 add_library(dragon4_lib STATIC
     ${dragon4_SOURCE_DIR}/Dragon4.cpp
-    ${dragon4_SOURCE_DIR}/Math.cpp
+    ${dragon4_SOURCE_DIR}/DragonMath.cpp
     ${dragon4_SOURCE_DIR}/PrintFloat.cpp
 )
+if(MATH_LIBRARY)
+    target_link_libraries(dragon4_lib PUBLIC ${MATH_LIBRARY})
+endif()
+
 target_include_directories(dragon4_lib PUBLIC
     ${dragon4_SOURCE_DIR}
 )
