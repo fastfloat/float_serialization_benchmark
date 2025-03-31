@@ -31,8 +31,8 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 FetchContent_Declare(
         doubleconversion
         GIT_REPOSITORY https://github.com/google/double-conversion.git
-        GIT_TAG "v3.3.1"
-        GIT_SHALLOW TRUE
+        GIT_TAG 101e1ba89dc41ceb75090831da97c43a76cd2906
+        # GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(doubleconversion)
 
