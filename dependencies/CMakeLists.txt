@@ -97,9 +97,29 @@ add_library(dragon4_lib STATIC
 if(MATH_LIBRARY)
     target_link_libraries(dragon4_lib PUBLIC ${MATH_LIBRARY})
 endif()
-
 target_include_directories(dragon4_lib PUBLIC
     ${dragon4_SOURCE_DIR}
+)
+
+FetchContent_Declare(
+        swift
+        GIT_REPOSITORY https://github.com/swiftlang/swift.git
+        GIT_TAG 6a862d2eb7128ff1f317b07e8ad1a6da939775f3
+        GIT_SHALLOW TRUE
+)
+FetchContent_GetProperties(swift)
+if(NOT swift)
+  FetchContent_Populate(swift)  # Downloads code to ${dragon4_SOURCE_DIR}
+endif()
+set(swift_SOURCE_DIR ${swift_SOURCE_DIR} PARENT_SCOPE)
+add_library(swift_lib STATIC
+    ${swift_SOURCE_DIR}/stdlib/public/runtime/SwiftDtoa.cpp
+)
+if(MATH_LIBRARY)
+    target_link_libraries(swift_lib PUBLIC ${MATH_LIBRARY})
+endif()
+target_include_directories(swift_lib PUBLIC
+    ${swift_SOURCE_DIR}/include
 )
 
 FetchContent_Declare(
