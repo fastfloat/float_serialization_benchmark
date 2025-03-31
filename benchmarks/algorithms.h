@@ -32,12 +32,14 @@
 #include "ryu/ryu.h"
 #include "schubfach_32.h"
 #include "schubfach_64.h"
+#include "swift/Runtime/SwiftDtoa.h"
 #if (__SIZEOF_INT128__ == 16) && (defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER))
 #include "yy_double.h"
 #define YY_DOUBLE_SUPPORTED 1
 #else
 #define YY_DOUBLE_SUPPORTED 0
 #endif
+
 namespace Benchmarks {
 
 enum Algorithm {
@@ -57,7 +59,8 @@ enum Algorithm {
   ABSEIL = 13,
   STD_TO_CHARS = 14,
   GRISU3 = 15,
-  YY_DOUBLE = 16,
+  SWIFT_DTOA = 16,
+  YY_DOUBLE = 17,
   COUNT // Keep last
 };
 
@@ -228,6 +231,14 @@ int double_conversion(T d, std::span<char>& buffer) {
     std::abort();
   }
   return strlen(builder.Finalize());
+}
+
+template<arithmetic_float T>
+int swiftDtoa(T d, std::span<char>& buffer) {
+  if constexpr (std::is_same_v<T, float>)
+    return swift_dtoa_optimal_float(d, buffer.data(), buffer.size());
+  else
+    return swift_dtoa_optimal_double(d, buffer.data(), buffer.size());
 }
 
 template<arithmetic_float T>
