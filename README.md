@@ -13,6 +13,7 @@ Currently, the following approaches are compared:
   - [sprintf](https://en.cppreference.com/w/c/io/fprintf)
   - [grisu2](https://github.com/simdjson/simdjson/blob/master/src/to_chars.cpp)
   - [grisu-exact](https://github.com/jk-jeon/Grisu-Exact)
+  - [Errol](https://github.com/marcandrysco/Errol)
   - [std::to_chars](https://en.cppreference.com/w/cpp/utility/to_chars)
   - [schubfach](https://github.com/abolz/Drachennest/blob/master/src/schubfach_64.cc)
   - [Dragonbox](https://github.com/jk-jeon/dragonbox)
@@ -20,6 +21,8 @@ Currently, the following approaches are compared:
   - [double-conversion](https://github.com/google/double-conversion)
   - [Abseil](https://github.com/abseil/abseil-cpp)
   - [Teju Jagua](https://github.com/cassioneri/teju_jagua)
+  - [yy_double](https://github.com/ibireme/yyjson/issues/200#issuecomment-2726783097)
+  - [SwiftDtoa](https://github.com/swiftlang/swift/blob/main/stdlib/public/runtime/SwiftDtoa.cpp)
 
 If you have a recent version of CMake (3.15 or better) under linux,  you can simply
 go in the directory and type the following commands:
