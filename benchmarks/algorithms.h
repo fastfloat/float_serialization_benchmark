@@ -32,7 +32,9 @@
 #include "ryu/ryu.h"
 #include "schubfach_32.h"
 #include "schubfach_64.h"
+#if SWIFT_LIB_SUPPORTED
 #include "swift/Runtime/SwiftDtoa.h"
+#endif
 #if (__SIZEOF_INT128__ == 16) && (defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER))
 #include "yy_double.h"
 #define YY_DOUBLE_SUPPORTED 1
@@ -235,10 +237,15 @@ int double_conversion(T d, std::span<char>& buffer) {
 
 template<arithmetic_float T>
 int swiftDtoa(T d, std::span<char>& buffer) {
+#if SWIFT_LIB_SUPPORTED
   if constexpr (std::is_same_v<T, float>)
     return swift_dtoa_optimal_float(d, buffer.data(), buffer.size());
   else
     return swift_dtoa_optimal_double(d, buffer.data(), buffer.size());
+#else
+  std::cerr << "swift code not supported" << std::endl;
+  std::abort();
+#endif
 }
 
 template<arithmetic_float T>
