@@ -59,6 +59,15 @@ Serialize strings generated from floats in (0,1):
 ./build/benchmarks/benchmark
 ```
 
+## Exhaustive 32-bit check
+
+We also include an exhaustive check of all 32-bit floats, to verify
+that we can produce the shortest string representation.
+
+```
+./build/benchmarks/exhaustivefloat32
+```
+
 ## Other existing benchmarks
 
 - [dtoa Benchmark](https://github.com/miloyip/dtoa-benchmark)

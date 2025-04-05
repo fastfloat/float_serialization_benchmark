@@ -60,7 +60,7 @@ void evaluateProperties(const std::vector<T> &lines,
       assert(ptrAlgo == bufAlgo.data() + vAlgo);
       assert(ecAlgo == std::errc());
       if ((incorrect += (d != dAlgo)) == 1)
-        fmt::println("\t{:20} mismatch: d = {:.17f}, bufRef = {}, bufAlgo = {}, dAlgo = {:.17f}",
+        fmt::println("#\t{:20} mismatch: d = {:.17f}, bufRef = {}, bufAlgo = {}, dAlgo = {:.17f}",
                      algo.name, d, bufRef.data(), bufAlgo.data(), dAlgo);
     }
     fmt::println("{:20} {:20}", algo.name, incorrect == 0 ? "yes" : "no");
@@ -178,36 +178,13 @@ int main(int argc, char **argv) {
         numbers = fileload<double>(filename);
     }
 
-    auto initArgs = [&](auto type) {
-      using T = decltype(type);
-      std::array<BenchArgs<T>, Benchmarks::COUNT> args;
-      args[Benchmarks::DRAGON4]           = { "dragon4"           , Benchmarks::dragon4<T>           , true                          , 10 };
-      args[Benchmarks::ERROL3]            = { "errol3"            , Benchmarks::errol3<T>            , result["errol"].as<bool>() };
-      args[Benchmarks::TO_STRING]         = { "std::to_string"    , Benchmarks::to_string<T>         , ERROL_SUPPORTED };
-      args[Benchmarks::FMT_FORMAT]        = { "fmt::format"       , Benchmarks::fmt_format<T>        , true };
-      args[Benchmarks::NETLIB]            = { "netlib"            , Benchmarks::netlib<T>            , NETLIB_SUPPORTED              , 10 };
-      args[Benchmarks::SNPRINTF]          = { "snprintf"          , Benchmarks::snprintf<T>          , true };
-      args[Benchmarks::GRISU2]            = { "grisu2"            , Benchmarks::grisu2<T>            , true };
-      args[Benchmarks::GRISU_EXACT]       = { "grisu_exact"       , Benchmarks::grisu_exact<T>       , true };
-      args[Benchmarks::SCHUBFACH]         = { "schubfach"         , Benchmarks::schubfach<T>         , true };
-      args[Benchmarks::DRAGONBOX]         = { "dragonbox"         , Benchmarks::dragonbox<T>         , true };
-      args[Benchmarks::RYU]               = { "ryu"               , Benchmarks::ryu<T>               , true };
-      args[Benchmarks::TEJU_JAGUA]        = { "teju_jagua"        , Benchmarks::teju_jagua<T>        , true };
-      args[Benchmarks::DOUBLE_CONVERSION] = { "double_conversion" , Benchmarks::double_conversion<T> , true };
-      args[Benchmarks::ABSEIL]            = { "abseil"            , Benchmarks::abseil<T>            , ABSEIL_SUPPORTED };
-      args[Benchmarks::STD_TO_CHARS]      = { "std::to_chars"     , Benchmarks::std_to_chars<T>      , TO_CHARS_SUPPORTED };
-      args[Benchmarks::GRISU3]            = { "grisu3"            , Benchmarks::grisu3<T>            , true };
-      args[Benchmarks::SWIFT_DTOA]        = { "SwiftDtoa"         , Benchmarks::swiftDtoa<T>         , SWIFT_LIB_SUPPORTED };
-      args[Benchmarks::YY_DOUBLE]         = { "yy_double"         , Benchmarks::yy_double<T>         , YY_DOUBLE_SUPPORTED };
-      return args;
-    };
-
     std::variant<std::array<BenchArgs<float>, Benchmarks::COUNT>,
                  std::array<BenchArgs<double>, Benchmarks::COUNT>> algorithms;
+    const bool errol = result["errol"].as<bool>();
     if (single)
-      algorithms = initArgs(float{});
+      algorithms = Benchmarks::initArgs<float>(errol);
     else
-      algorithms = initArgs(double{});
+      algorithms = Benchmarks::initArgs<double>(errol);
 
     const bool test = result["test"].as<bool>();
     std::visit([test](const auto &lines, const auto &args) {

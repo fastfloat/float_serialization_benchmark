@@ -60,6 +60,7 @@ FetchContent_Declare(
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(ryu)
+set(ryu_SOURCE_DIR ${ryu_SOURCE_DIR} PARENT_SCOPE)
 
 FetchContent_Declare(
         grisu-exact
