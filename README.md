@@ -24,7 +24,7 @@ Currently, the following approaches are compared:
   - [yy_double](https://github.com/ibireme/yyjson/issues/200#issuecomment-2726783097)
   - [SwiftDtoa](https://github.com/swiftlang/swift/blob/main/stdlib/public/runtime/SwiftDtoa.cpp)
 
-If you have a recent version of CMake (3.15 or better) under linux,  you can simply
+If you have a recent version of CMake (3.29 or better) under linux,  you can simply
 go in the directory and type the following commands:
 
 ```
