@@ -11,37 +11,23 @@
 
 size_t count_significant_digits(std::string_view num_str) {
   size_t count = 0;
-  bool has_decimal = false;
-  bool in_exponent = false;
+  size_t trailing_zeros = 0;
   bool leading_zero = true;
 
   for (char c : num_str) {
-    if (c == '.') {
-      has_decimal = true;
+    if (c == '.')
       continue;
-    }
-    if (c == 'e' || c == 'E') {
-      in_exponent = true;
-      continue;
-    }
+    if (c == 'e' || c == 'E')
+      break; // Stop counting at exponent
     if (std::isdigit(static_cast<unsigned char>(c))) {
-      if (!in_exponent) {
-        if (leading_zero && c == '0') {
-          // Skip leading zeros before decimal
-          continue;
-        }
-        leading_zero = false;
-        count++;
+      if (c == '0') {
+        if (!leading_zero)
+          trailing_zeros++;
+        continue;
       }
-    }
-  }
-
-  // Special case: "X.0" should count as 1 digit
-  if (has_decimal && count > 1) {
-    auto last_digit_pos = num_str.find_last_not_of("0eE+-");
-    if (last_digit_pos != std::string_view::npos &&
-        num_str[last_digit_pos] == '.' && count == 2) {
-      return 1;
+      leading_zero = false;
+      count += trailing_zeros + 1;
+      trailing_zeros = 0;
     }
   }
 
@@ -68,6 +54,7 @@ std::string float_to_hex(float f) {
     // Convert to hex format
     return fmt::format("0x1.{:06x}p{:+d}", mantissa_bits, exponent - 23);
 }
+
 void run_exhaustive32(bool errol) {
   constexpr auto precision = std::numeric_limits<float>::digits10;
   fmt::println("{:20} {:20}", "Algorithm", "Valid shortest serialization");
