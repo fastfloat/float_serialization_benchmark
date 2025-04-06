@@ -1,13 +1,15 @@
+#include <fmt/format.h>
 
-#include "algorithms.h"
-#include "cxxopts.hpp"
+#include <array>
 #include <bit>
 #include <cctype>
 #include <cmath>
 #include <cstring>
-#include <fmt/format.h>
 #include <iostream>
 #include <string_view>
+
+#include "algorithms.h"
+#include "cxxopts.hpp"
 
 size_t count_significant_digits(std::string_view num_str) {
   size_t count = 0;
