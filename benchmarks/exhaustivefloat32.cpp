@@ -76,8 +76,7 @@ void run_exhaustive32(bool errol) {
     std::span<char> bufRef(buf1, sizeof(buf1)), bufAlgo(buf2, sizeof(buf2));
     fmt::print("# processing {}", algo.name);
     fflush(stdout);
-    for(size_t i = 0; i < 1; i++) {
-    //for (uint64_t i = 0; i < (1ULL << 32); ++i) {
+    for (uint64_t i = 0; i < (1ULL << 32); ++i) {
       if (i % 0x2000000 == 0) {
         printf(".");
         fflush(stdout);
@@ -86,13 +85,10 @@ void run_exhaustive32(bool errol) {
       uint32_t i32(i);
       float d;
       std::memcpy(&d, &i32, sizeof(float));
-      d = 33554448;
       if (std::isnan(d) || std::isinf(d))
         continue;
       // Reference output
       const size_t vRef = Benchmarks::std_to_chars(d, bufRef);
-      d = 33554448;
-
       const size_t vAlgo = algo.func(d, bufAlgo);
 
       std::string_view svRef{bufRef.data(), vRef};
@@ -109,15 +105,18 @@ void run_exhaustive32(bool errol) {
         fflush(stdout);
         break;
       }
+      if(*backRef != d || *backAlgo != d) {
+        fmt::println("\n# Error: parsing the output with std::from_chars does not bring back the input.");
+      }
       if(*backRef != d) {
         incorrect = true;
-        fmt::print(" mismatch: d = {}, backRef = {}", d, *backRef);
+        fmt::print(" ref mismatch: d = {}, backRef = {}", d, *backRef);
         fflush(stdout);
         break;
       }
       if(*backAlgo != d) {
         incorrect = true;
-        fmt::print(" mismatch: d = {}, backAlgo = {}", d, *backAlgo);
+        fmt::print(" algo mismatch: d = {}, backAlgo = {}, parsing the output with std::from_chars does not recover the original", d, *backAlgo);
         fflush(stdout);
         break;
       }
