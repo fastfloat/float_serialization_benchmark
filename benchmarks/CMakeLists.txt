@@ -89,10 +89,10 @@ target_include_directories(benchmark_deps INTERFACE ${grisu-exact_SOURCE_DIR})
 
 target_link_libraries(benchmark PUBLIC benchmark_deps)
 
-if(TO_CHARS_OK)
+if(TO_CHARS_OK AND FROM_CHARS_OK)
     add_executable(exhaustivefloat32
         exhaustivefloat32.cpp
     )
     target_link_libraries(exhaustivefloat32 PUBLIC benchmark_deps)
-endif(TO_CHARS_OK)
+endif(TO_CHARS_OK AND FROM_CHARS_OK)
 

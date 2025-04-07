@@ -7,6 +7,7 @@
 #include <cstring>
 #include <iostream>
 #include <string_view>
+#include <charconv>
 
 #include "algorithms.h"
 #include "cxxopts.hpp"
@@ -37,24 +38,25 @@ size_t count_significant_digits(std::string_view num_str) {
 }
 
 std::string float_to_hex(float f) {
-    if (std::isnan(f) || std::isinf(f)) {
-        return fmt::format("{}", f); // Handle special cases
-    }
+  std::ostringstream oss;
+  oss << std::hexfloat << f;
+  return oss.str();
+}
 
-    uint32_t bits = std::bit_cast<uint32_t>(f);
-    int exponent;
-    float mantissa = std::frexp(f, &exponent); // Get mantissa and exponent
-    uint32_t mantissa_bits = bits & 0x7FFFFF;  // 23-bit mantissa
-    int exp_bits = (bits >> 23) & 0xFF;        // 8-bit exponent
-    bool sign = bits >> 31;                    // Sign bit
-
-    // Adjust for IEEE 754 representation
-    if (exp_bits == 0 && mantissa_bits == 0) {
-        return "0x0p+0"; // Zero case
-    }
-
-    // Convert to hex format
-    return fmt::format("0x1.{:06x}p{:+d}", mantissa_bits, exponent - 23);
+std::optional<float> parse_float(std::string_view sv) {
+  float result;
+  const char* begin = sv.data();
+  const char* end = sv.data() + sv.size();
+  
+  auto [ptr, ec] = std::from_chars(begin, end, result);
+  
+  // Check if parsing succeeded and consumed the entire string
+  if (ec == std::errc{} && ptr == end) {
+      return result;
+  }
+  
+  // Return nullopt if parsing failed or didn't consume all input
+  return std::nullopt;
 }
 
 void run_exhaustive32(bool errol) {
@@ -74,7 +76,8 @@ void run_exhaustive32(bool errol) {
     std::span<char> bufRef(buf1, sizeof(buf1)), bufAlgo(buf2, sizeof(buf2));
     fmt::print("# processing {}", algo.name);
     fflush(stdout);
-    for (uint64_t i = 0; i < (1ULL << 32); ++i) {
+    for(size_t i = 0; i < 1; i++) {
+    //for (uint64_t i = 0; i < (1ULL << 32); ++i) {
       if (i % 0x2000000 == 0) {
         printf(".");
         fflush(stdout);
@@ -83,10 +86,13 @@ void run_exhaustive32(bool errol) {
       uint32_t i32(i);
       float d;
       std::memcpy(&d, &i32, sizeof(float));
+      d = 33554448;
       if (std::isnan(d) || std::isinf(d))
         continue;
       // Reference output
       const size_t vRef = Benchmarks::std_to_chars(d, bufRef);
+      d = 33554448;
+
       const size_t vAlgo = algo.func(d, bufAlgo);
 
       std::string_view svRef{bufRef.data(), vRef};
@@ -94,6 +100,27 @@ void run_exhaustive32(bool errol) {
 
       auto countRef = count_significant_digits(svRef);
       auto countAlgo = count_significant_digits(svAlgo);
+      auto backRef = parse_float(svRef);
+      auto backAlgo = parse_float(svAlgo);
+      if(!backRef || !backAlgo) {
+        incorrect = true;
+        fmt::print(" parse error: d = {}, bufRef = {}, bufAlgo = {}", float_to_hex(d),
+                   svRef, svAlgo);
+        fflush(stdout);
+        break;
+      }
+      if(*backRef != d) {
+        incorrect = true;
+        fmt::print(" mismatch: d = {}, backRef = {}", d, *backRef);
+        fflush(stdout);
+        break;
+      }
+      if(*backAlgo != d) {
+        incorrect = true;
+        fmt::print(" mismatch: d = {}, backAlgo = {}", d, *backAlgo);
+        fflush(stdout);
+        break;
+      }
       if (countRef != countAlgo) {
         incorrect = true;
         fmt::print(" mismatch: d = {}, bufRef = {}, bufAlgo = {}", float_to_hex(d),
