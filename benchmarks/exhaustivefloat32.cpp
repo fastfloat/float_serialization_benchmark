@@ -1,6 +1,7 @@
 
 #include "algorithms.h"
 #include "cxxopts.hpp"
+#include <array>
 #include <bit>
 #include <cctype>
 #include <cmath>
