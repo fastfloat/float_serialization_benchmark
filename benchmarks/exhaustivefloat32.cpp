@@ -112,15 +112,18 @@ void run_exhaustive32(bool errol) {
         fflush(stdout);
         break;
       }
+      if(*backRef != d || *backAlgo != d) {
+        fmt::println("\n# Error: parsing the output with std::from_chars does not bring back the input.");
+      }
       if(*backRef != d) {
         incorrect = true;
-        fmt::print(" mismatch: d = {}, backRef = {}", d, *backRef);
+        fmt::print(" ref mismatch: d = {}, backRef = {}", d, *backRef);
         fflush(stdout);
         break;
       }
       if(*backAlgo != d) {
         incorrect = true;
-        fmt::print(" mismatch: d = {}, backAlgo = {}", d, *backAlgo);
+        fmt::print(" algo mismatch: d = {}, backAlgo = {}, parsing the output with std::from_chars does not recover the original", d, *backAlgo);
         fflush(stdout);
         break;
       }
