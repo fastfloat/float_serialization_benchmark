@@ -39,7 +39,7 @@ FetchContent_MakeAvailable(doubleconversion)
 FetchContent_Declare(
         teju_jagua
         GIT_REPOSITORY https://github.com/jaja360/teju_jagua.git
-        GIT_TAG e62fcfc418170cdcba0fc842dcb5e93ead428ba6
+        GIT_TAG 990e89aa886a19d29c5b2e0f93d150f74c0b0d4e
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(teju_jagua)
@@ -60,6 +60,7 @@ FetchContent_Declare(
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(ryu)
+set(ryu_SOURCE_DIR ${ryu_SOURCE_DIR} PARENT_SCOPE)
 
 FetchContent_Declare(
         grisu-exact

@@ -19,6 +19,7 @@
 
 #include <fmt/format.h>
 
+#include <array>
 #include <span>
 
 #include "cpp/common/traits.hpp"  // Teju Jagua
@@ -266,7 +267,7 @@ int abseil(T d, std::span<char>& buffer) {
   // absl::StrAppend(&s, d);
   // std::copy(s.begin(), s.end(), buffer.begin());
   // return size(s);
-  return absl::SNPrintF(buffer.data(), buffer.size(), "%.17g", d);
+  return absl::SNPrintF(buffer.data(), buffer.size(), "%g", d);
 }
 
 template<arithmetic_float T>
@@ -284,6 +285,31 @@ int std_to_chars(T d, std::span<char>& buffer) {
   std::abort();
 #endif
 }
+
+
+template <arithmetic_float T>
+std::array<BenchArgs<T>, Benchmarks::COUNT> initArgs(bool errol = false) {
+  std::array<BenchArgs<T>, Benchmarks::COUNT> args;
+  args[Benchmarks::DRAGON4]           = { "dragon4"           , Benchmarks::dragon4<T>           , true                          , 10 };
+  args[Benchmarks::ERROL3]            = { "errol3"            , Benchmarks::errol3<T>            , errol };
+  args[Benchmarks::TO_STRING]         = { "std::to_string"    , Benchmarks::to_string<T>         , ERROL_SUPPORTED };
+  args[Benchmarks::FMT_FORMAT]        = { "fmt::format"       , Benchmarks::fmt_format<T>        , true };
+  args[Benchmarks::NETLIB]            = { "netlib"            , Benchmarks::netlib<T>            , NETLIB_SUPPORTED  && std::is_same_v<T, double>, 10 };
+  args[Benchmarks::SNPRINTF]          = { "snprintf"          , Benchmarks::snprintf<T>          , true };
+  args[Benchmarks::GRISU2]            = { "grisu2"            , Benchmarks::grisu2<T>            , std::is_same_v<T, double> };
+  args[Benchmarks::GRISU_EXACT]       = { "grisu_exact"       , Benchmarks::grisu_exact<T>       , true };
+  args[Benchmarks::SCHUBFACH]         = { "schubfach"         , Benchmarks::schubfach<T>         , true };
+  args[Benchmarks::DRAGONBOX]         = { "dragonbox"         , Benchmarks::dragonbox<T>         , true };
+  args[Benchmarks::RYU]               = { "ryu"               , Benchmarks::ryu<T>               , true };
+  args[Benchmarks::TEJU_JAGUA]        = { "teju_jagua"        , Benchmarks::teju_jagua<T>        , true };
+  args[Benchmarks::DOUBLE_CONVERSION] = { "double_conversion" , Benchmarks::double_conversion<T> , true };
+  args[Benchmarks::ABSEIL]            = { "abseil"            , Benchmarks::abseil<T>            , ABSEIL_SUPPORTED };
+  args[Benchmarks::STD_TO_CHARS]      = { "std::to_chars"     , Benchmarks::std_to_chars<T>      , TO_CHARS_SUPPORTED };
+  args[Benchmarks::GRISU3]            = { "grisu3"            , Benchmarks::grisu3<T>            , std::is_same_v<T, double> };
+  args[Benchmarks::SWIFT_DTOA]        = { "SwiftDtoa"         , Benchmarks::swiftDtoa<T>         , SWIFT_LIB_SUPPORTED };
+  args[Benchmarks::YY_DOUBLE]         = { "yy_double"         , Benchmarks::yy_double<T>         , YY_DOUBLE_SUPPORTED && std::is_same_v<T, double> };
+  return args;
+};
 
 }  // namespace Benchmarks
 
