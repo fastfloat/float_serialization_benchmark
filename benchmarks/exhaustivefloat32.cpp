@@ -68,7 +68,11 @@ void run_exhaustive32(bool errol) {
 
   for (const auto &algo : args) {
     if (!algo.used) {
-      std::cout << "# skipping " << algo.name << std::endl;
+      fmt::print("# skipping {}\n", algo.name);
+      continue;
+    }
+    if (algo.func == Benchmarks::dragonbox<float>) {
+      fmt::print("# skipping {} because it is the reference.\n", algo.name);
       continue;
     }
     bool incorrect = false;
@@ -76,8 +80,7 @@ void run_exhaustive32(bool errol) {
     std::span<char> bufRef(buf1, sizeof(buf1)), bufAlgo(buf2, sizeof(buf2));
     fmt::print("# processing {}", algo.name);
     fflush(stdout);
-    for(size_t i = 0; i < 1; i++) {
-    //for (uint64_t i = 0; i < (1ULL << 32); ++i) {
+    for (uint64_t i = 0; i < (1ULL << 32); ++i) {
       if (i % 0x2000000 == 0) {
         printf(".");
         fflush(stdout);
@@ -86,13 +89,13 @@ void run_exhaustive32(bool errol) {
       uint32_t i32(i);
       float d;
       std::memcpy(&d, &i32, sizeof(float));
-      d = 33554448;
       if (std::isnan(d) || std::isinf(d))
         continue;
-      // Reference output
-      const size_t vRef = Benchmarks::std_to_chars(d, bufRef);
-      d = 33554448;
-
+      // Reference output, we cannot use std::to_chars here, because it produces
+      // the shortest representation, which is not necessarily the same as the
+      // as the representation using the fewest significant digits.
+      // So we use dragonbox, which serves as the reference implementation.
+      const size_t vRef = Benchmarks::dragonbox(d, bufRef);
       const size_t vAlgo = algo.func(d, bufAlgo);
 
       std::string_view svRef{bufRef.data(), vRef};
@@ -148,12 +151,12 @@ int main(int argc, char **argv) {
     const auto result = options.parse(argc, argv);
 
     if (result["help"].as<bool>()) {
-      std::cout << options.help() << std::endl;
+      fmt::print("{}\n", options.help());
       return EXIT_SUCCESS;
     }
     run_exhaustive32(result["errol"].as<bool>());
   } catch (const std::exception &e) {
-    std::cout << "error parsing options: " << e.what() << std::endl;
+    fmt::print("error parsing options: {}\n", e.what());
     return EXIT_FAILURE;
   }
 }
