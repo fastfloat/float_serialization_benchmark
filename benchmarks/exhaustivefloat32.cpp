@@ -117,13 +117,13 @@ void run_exhaustive32(bool errol) {
       }
       if(*backRef != d) {
         incorrect = true;
-        fmt::print(" ref mismatch: d = {}, backRef = {}", d, *backRef);
+        fmt::print(" ref mismatch: d = {}, backRef = {}; svRef = {}, svAlgo = {}", float_to_hex(d), *backRef, svRef, svAlgo);
         fflush(stdout);
         break;
       }
       if(*backAlgo != d) {
         incorrect = true;
-        fmt::print(" algo mismatch: d = {}, backAlgo = {}, parsing the output with std::from_chars does not recover the original", d, *backAlgo);
+        fmt::print(" algo mismatch: d = {}, backAlgo = {}; svRef = {}, svAlgo = {}, parsing the output with std::from_chars does not recover the original", float_to_hex(d), *backAlgo, svRef, svAlgo);
         fflush(stdout);
         break;
       }
@@ -135,7 +135,7 @@ void run_exhaustive32(bool errol) {
         break;
       }
     }
-    printf("\n");
+    fmt::print("\n");
     fmt::println("{:20} {:20}", algo.name, incorrect == 0 ? "yes" : "no");
   }
 }

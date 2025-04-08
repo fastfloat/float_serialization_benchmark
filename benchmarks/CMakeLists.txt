@@ -93,6 +93,14 @@ if(TO_CHARS_OK AND FROM_CHARS_OK)
     add_executable(exhaustivefloat32
         exhaustivefloat32.cpp
     )
+
     target_link_libraries(exhaustivefloat32 PUBLIC benchmark_deps)
+    add_executable(thoroughfloat64
+        thoroughfloat64.cpp
+    )
+    set(THOROUGH_DATA_FILE "${CMAKE_SOURCE_DIR}/data/thoroughnumbers.txt")
+    target_compile_definitions(thoroughfloat64 PRIVATE THOROUGH_DATA_FILE="${THOROUGH_DATA_FILE}")
+
+    target_link_libraries(thoroughfloat64 PUBLIC benchmark_deps)
 endif(TO_CHARS_OK AND FROM_CHARS_OK)
 

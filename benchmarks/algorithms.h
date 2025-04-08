@@ -128,6 +128,7 @@ int netlib(T d, std::span<char>& buffer) {
   int decpt, sign;
   char* rve;
   char* result = dtoa(d, 0, 0, &decpt, &sign, &rve);
+
   if (result) {
     int i = 0;
     if (sign)
@@ -141,10 +142,25 @@ int netlib(T d, std::span<char>& buffer) {
       // Number is < 1 (e.g., 0.000123)
       buffer[i++] = '0';
       buffer[i++] = '.';
-      std::fill_n(buffer.data() + i, -decpt, '0'); // Add leading zeros
-      i += -decpt;
+      // Adding lots of zeroes so can create a really large output:
+      //std::fill_n(buffer.data() + i, -decpt, '0'); // Add leading zeros
+      //i += -decpt;
     }
-
+    auto write_exponent = [&buffer, &i](int value) {
+      if (value >= 100) {
+          buffer[i++] = '0' + value / 100;
+          value %= 100;
+          buffer[i++] = '0' + value / 10;
+          value %= 10;
+          buffer[i++] = '0' + value;
+      } else if (value >= 10) {
+          buffer[i++] = '0' + value / 10;
+          value %= 10;
+          buffer[i++] = '0' + value;
+      } else {
+          buffer[i++] = '0' + value;
+      }
+  };
     // Fractional part (if any remaining digits)
     const int remaining_digits = rve - (result + std::max(0, decpt));
     if (remaining_digits > 0) {
@@ -152,6 +168,14 @@ int netlib(T d, std::span<char>& buffer) {
         buffer[i++] = '.';
       std::copy_n(result + std::max(0, decpt), remaining_digits, buffer.data() + i);
       i += remaining_digits;
+      if(decpt < 0) {
+        buffer[i++] = 'E';
+        buffer[i++] = '-';
+        write_exponent(-decpt);
+      }
+    } else if (remaining_digits < 0) {
+      buffer[i++] = 'E';
+      write_exponent(-remaining_digits);
     }
 
     freedtoa(result);
