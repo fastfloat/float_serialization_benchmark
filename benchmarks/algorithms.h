@@ -19,6 +19,7 @@
 
 #include <fmt/format.h>
 
+#include <array>
 #include <span>
 
 #include "cpp/common/traits.hpp"  // Teju Jagua
@@ -309,7 +310,6 @@ std::array<BenchArgs<T>, Benchmarks::COUNT> initArgs(bool errol = false) {
   args[Benchmarks::YY_DOUBLE]         = { "yy_double"         , Benchmarks::yy_double<T>         , YY_DOUBLE_SUPPORTED && std::is_same_v<T, double> };
   return args;
 };
-
 
 }  // namespace Benchmarks
 
