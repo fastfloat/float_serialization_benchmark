@@ -33,6 +33,9 @@ cmake --build build
 ./build/benchmarks/benchmark 
 ```
 
+Some functionality might be disabled under some systems. For example, under macOS with
+libc++, some tests might be omitted because it does not yet fully support C++17.
+
 We also support Visual Studio, please refer to the cmake documentation.
 
 You may use docker to run these benchmarks easily on a variety of platforms: see https://github.com/lemire/docker_programming_station
@@ -64,10 +67,29 @@ Serialize strings generated from floats in (0,1):
 ## Exhaustive 32-bit check
 
 We also include an exhaustive check of all 32-bit floats, to verify
-that we can produce the shortest string representation.
+that we can produce the shortest string representation (measured by
+the number of significant digits).
+
+Under Linux, you may run the following check:
 
 ```
+cmake -B build .
+cmake --build build --config Release
 ./build/benchmarks/exhaustivefloat32
+```
+
+## Thorough 64-bit check
+
+We also include a thorough check of many 64-bit floats, to verify
+that we can produce the shortest string representation (measured by 
+the number of significant digits).
+
+Under Linux, you may run the following check:
+
+```
+cmake -B build .
+cmake --build build --config Release
+./build/benchmarks/thoroughfloat64
 ```
 
 ## Other existing benchmarks
