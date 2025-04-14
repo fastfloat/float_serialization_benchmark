@@ -28,7 +28,7 @@ using Benchmarks::BenchArgs;
 
 template <arithmetic_float T>
 void evaluateProperties(const std::vector<T> &lines,
-                        const std::array<BenchArgs<T>, Benchmarks::COUNT> &args) {
+                        const std::array<BenchArgs<T>, Benchmarks::COUNT> &args, const std::string& filter = "") {
   constexpr auto precision = std::numeric_limits<T>::digits10;
   fmt::println("{:20} {:20}", "Algorithm", "Valid round-trip");
 
@@ -37,7 +37,11 @@ void evaluateProperties(const std::vector<T> &lines,
       std::cout << "# skipping " << algo.name << std::endl;
       continue;
     }
-
+    // Apply filter if provided
+    if (!filter.empty() && std::string(filter).find(algo.name) == std::string::npos) {
+      std::cout << "# filtered out " << algo.name << std::endl;
+      continue;
+    }
     char buf1[100], buf2[100];
     std::span<char> bufRef(buf1, sizeof(buf1)), bufAlgo(buf2, sizeof(buf2));
     int incorrect = 0;
@@ -69,10 +73,15 @@ void evaluateProperties(const std::vector<T> &lines,
 
 template <arithmetic_float T>
 void process(const std::vector<T> &lines,
-             const std::array<BenchArgs<T>, Benchmarks::COUNT> &args) {
+             const std::array<BenchArgs<T>, Benchmarks::COUNT> &args, const std::string& filter = "") {
   for (const auto &algo : args) {
     if (!algo.used) {
       std::cout << "# skipping " << algo.name << std::endl;
+      continue;
+    }
+    // Apply filter if provided
+    if (!filter.empty() && std::string(filter).find(algo.name) == std::string::npos) {
+      std::cout << "# filtered out " << algo.name << std::endl;
       continue;
     }
     pretty_print(lines, algo.name, [&algo](const std::vector<T> &lines) -> int {
@@ -146,6 +155,8 @@ int main(int argc, char **argv) {
         cxxopts::value<bool>()->default_value("false"))
         ("e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0).",
         cxxopts::value<bool>()->default_value("false"))
+        ("a,algo-filter", "Filter algorithms by name substring.",
+          cxxopts::value<std::string>()->default_value(""))
         ("h,help", "Print usage.");
     const auto result = options.parse(argc, argv);
 
@@ -155,6 +166,7 @@ int main(int argc, char **argv) {
     }
 
     const bool single = result["single"].as<bool>();
+    const std::string filter = result["algo-filter"].as<std::string>();
     std::cout << "number type: binary"
               << (single ? "32 (float)" : "64 (double)") << std::endl;
 
@@ -187,14 +199,14 @@ int main(int argc, char **argv) {
       algorithms = Benchmarks::initArgs<double>(errol);
 
     const bool test = result["test"].as<bool>();
-    std::visit([test](const auto &lines, const auto &args) {
+    std::visit([test,&filter](const auto &lines, const auto &args) {
       using T1 = typename std::decay_t<decltype(lines)>::value_type;
       using T2 = typename std::decay_t<decltype(args)>::value_type::Type;
       if constexpr (std::is_same_v<T1, T2>) {
         if (test)
-          evaluateProperties(lines, args);
+          evaluateProperties(lines, args, filter);
         else
-          process(lines, args);
+          process(lines, args, filter);
       }
     }, numbers, algorithms);
   } catch (const std::exception &e) {
