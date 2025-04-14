@@ -192,7 +192,10 @@ int netlib(T d, std::span<char>& buffer) {
 
 template<arithmetic_float T>
 int snprintf(T d, std::span<char>& buffer) {
-  return std::snprintf(buffer.data(), buffer.size(), "%.17g", d);
+  if constexpr (std::is_same_v<T, float>)
+    return std::snprintf(buffer.data(), buffer.size(), "%.9g", d);
+  else
+    return std::snprintf(buffer.data(), buffer.size(), "%.17g", d);
 }
 
 // grisu2 is hardcoded for double.
@@ -291,7 +294,10 @@ int abseil(T d, std::span<char>& buffer) {
   // absl::StrAppend(&s, d);
   // std::copy(s.begin(), s.end(), buffer.begin());
   // return size(s);
-  return absl::SNPrintF(buffer.data(), buffer.size(), "%g", d);
+  if constexpr (std::is_same_v<T, float>)
+    return absl::SNPrintF(buffer.data(), buffer.size(), "%.9g", d);
+  else
+    return absl::SNPrintF(buffer.data(), buffer.size(), "%.17g", d);
 }
 
 template<arithmetic_float T>
@@ -309,7 +315,6 @@ int std_to_chars(T d, std::span<char>& buffer) {
   std::abort();
 #endif
 }
-
 
 template <arithmetic_float T>
 std::array<BenchArgs<T>, Benchmarks::COUNT> initArgs(bool errol = false) {
