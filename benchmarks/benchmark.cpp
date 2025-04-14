@@ -38,7 +38,7 @@ void evaluateProperties(const std::vector<T> &lines,
       continue;
     }
     // Apply filter if provided
-    if (!filter.empty() && std::string(algo.name).find(filter) == std::string::npos) {
+    if (!filter.empty() && std::string(filter).find(algo.name) == std::string::npos) {
       std::cout << "# filtered out " << algo.name << std::endl;
       continue;
     }
@@ -80,7 +80,7 @@ void process(const std::vector<T> &lines,
       continue;
     }
     // Apply filter if provided
-    if (!filter.empty() && std::string(algo.name).find(filter) == std::string::npos) {
+    if (!filter.empty() && std::string(filter).find(algo.name) == std::string::npos) {
       std::cout << "# filtered out " << algo.name << std::endl;
       continue;
     }
