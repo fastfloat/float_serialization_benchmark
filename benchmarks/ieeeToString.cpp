@@ -137,7 +137,7 @@ int to_chars(T mantissa, int32_t exponent, bool sign, char* const result) {
   int index = 0;
   if (sign)
     result[index++] = '-';
-
+  // We use fast arithmetic to compute the number of digits.
   const uint32_t olength = is_double ? fast_digit_count64(mantissa) 
                                      : fast_digit_count32(mantissa);
   // Print the decimal digits.
@@ -146,22 +146,25 @@ int to_chars(T mantissa, int32_t exponent, bool sign, char* const result) {
   //   result[index + olength - i] = (char) ('0' + c);
   // }
   // result[index] = '0' + mantissa % 10;
-
+  //////////////////
+  // Performance:
+  // On 64-bit systems, 32-bit arithmetic is no faster than 64-bit,
+  // and sometimes slower.
+  /////////////////
   uint32_t i = 0;
-    // We take care of the least significant eight digits first.
+  // We take care of the least significant eight digits first.
   if (mantissa >= 100'000'000) {
-    // Expensive 64-bit division.
     const uint64_t q = mantissa / 100'000'000;
-    uint32_t temp = mantissa % 100'000'000;
+    uint64_t temp = mantissa % 100'000'000;
     mantissa = q;
 
-    const uint32_t c = temp % 10000;
+    const uint64_t c = temp % 10000;
     temp /= 10000;
-    const uint32_t d = temp % 10000;
-    const uint32_t c0 = (c % 100) << 1;
-    const uint32_t c1 = (c / 100) << 1;
-    const uint32_t d0 = (d % 100) << 1;
-    const uint32_t d1 = (d / 100) << 1;
+    const uint64_t d = temp % 10000;
+    const uint64_t c0 = (c % 100) << 1;
+    const uint64_t c1 = (c / 100) << 1;
+    const uint64_t d0 = (d % 100) << 1;
+    const uint64_t d1 = (d / 100) << 1;
     memcpy(result + index + olength - 1, hundreds_digit_table + c0, 2);
     memcpy(result + index + olength - 3, hundreds_digit_table + c1, 2);
     memcpy(result + index + olength - 5, hundreds_digit_table + d0, 2);
@@ -171,25 +174,24 @@ int to_chars(T mantissa, int32_t exponent, bool sign, char* const result) {
 
 
   uint64_t output = mantissa;
+  // Next, we proceed in block of 4 digits.
   while (output >= 10000) {
-#ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
-    const uint32_t c = output - 10000 * (output / 10000);
-#else
-    const uint32_t c = output % 10000;
-#endif
+    const uint64_t c = output % 10000;
     output /= 10000;
-    const uint32_t c0 = (c % 100) << 1;
-    const uint32_t c1 = (c / 100) << 1;
+    const uint64_t c0 = (c % 100) << 1;
+    const uint64_t c1 = (c / 100) << 1;
     memcpy(result + index + olength - i - 1, hundreds_digit_table + c0, 2);
     memcpy(result + index + olength - i - 3, hundreds_digit_table + c1, 2);
     i += 4;
   }
+  // We can take care of two digits out of the 2 or 3 remaining.
   if (output >= 100) {
-    const uint32_t c = (output % 100) << 1;
+    const uint64_t c = (output % 100) << 1;
     output /= 100;
     memcpy(result + index + olength - i - 1, hundreds_digit_table + c, 2);
     i += 2;
   }
+  // Last digit.
   if (output >= 10) {
     const uint64_t c = output << 1;
     // We can't use memcpy here: the decimal dot goes between these two digits.
