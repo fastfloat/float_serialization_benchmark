@@ -1,11 +1,40 @@
 #include "ieeeToString.h"
 
 #include <bit>
+#include <cstdlib>
+#include <stdio.h>
 #include <cassert>
 #include <cstring>
+#ifdef _MSC_VER
+#ifdef __clang__
+#define WE_HAVE_CLANGCL 1
+#else
+#define WE_HAVE_VISUAL_STUDIO 1
+#include <intrin.h>
+#endif
+#endif
 
-#include "ryu/digit_table.h" // For DIGIT_TABLE
-#include "ryu/common.h" // For decimalLength9
+static const char hundreds_digit_table[200] = {
+  '0', '0', '0', '1', '0', '2', '0', '3', '0', '4',
+  '0', '5', '0', '6', '0', '7', '0', '8', '0', '9',
+  '1', '0', '1', '1', '1', '2', '1', '3', '1', '4',
+  '1', '5', '1', '6', '1', '7', '1', '8', '1', '9',
+  '2', '0', '2', '1', '2', '2', '2', '3', '2', '4',
+  '2', '5', '2', '6', '2', '7', '2', '8', '2', '9',
+  '3', '0', '3', '1', '3', '2', '3', '3', '3', '4',
+  '3', '5', '3', '6', '3', '7', '3', '8', '3', '9',
+  '4', '0', '4', '1', '4', '2', '4', '3', '4', '4',
+  '4', '5', '4', '6', '4', '7', '4', '8', '4', '9',
+  '5', '0', '5', '1', '5', '2', '5', '3', '5', '4',
+  '5', '5', '5', '6', '5', '7', '5', '8', '5', '9',
+  '6', '0', '6', '1', '6', '2', '6', '3', '6', '4',
+  '6', '5', '6', '6', '6', '7', '6', '8', '6', '9',
+  '7', '0', '7', '1', '7', '2', '7', '3', '7', '4',
+  '7', '5', '7', '6', '7', '7', '7', '8', '7', '9',
+  '8', '0', '8', '1', '8', '2', '8', '3', '8', '4',
+  '8', '5', '8', '6', '8', '7', '8', '8', '8', '9',
+  '9', '0', '9', '1', '9', '2', '9', '3', '9', '4',
+  '9', '5', '9', '6', '9', '7', '9', '8', '9', '9'};
 
 IEEE754f decode_ieee754(float f) {
   const uint32_t bits = std::bit_cast<uint32_t>(f);
@@ -27,31 +56,77 @@ IEEE754d decode_ieee754(double f) {
   return decomposed;
 }
 
-// Extracted from the Ryu implementation.
-static inline uint32_t decimalLength17(const uint64_t v) {
-  // Function precondition: v is not an 18, 19, or 20-digit number.
-  // (17 digits are sufficient for round-tripping.)
-  assert(v < 100000000000000000L);
+////////////////////////
+// We should use https://en.cppreference.com/w/cpp/numeric/countl_zero 
+////////////////////////
+#if WE_HAVE_VISUAL_STUDIO
+inline int leading_zeroes_64(uint64_t input_num) {
+  unsigned long index;
+#ifdef _WIN64  // highly recommended!!!
+  _BitScanReverse64(&index, input_num);
+#else   // if we must support 32-bit Windows
+  if (input_num > 0xFFFFFFFF) {
+      _BitScanReverse(&index, (uint32_t)(input_num >> 32));
+      index += 32;
+  } else {
+      _BitScanReverse(&index, (uint32_t)(input_num));
+  }
+#endif  // _WIN64
+  return 63 - index;
+}
+#else
+inline int leading_zeroes_64(uint64_t input_num) {
+  return __builtin_clzll(input_num);
+}
+#endif
 
-  // Slightly faster than a loop.
-  // Average output length is 16.38 digits, so we check high-to-low.
-  if (v >= 10000000000000000L) { return 17; }
-  if (v >= 1000000000000000L) { return 16; }
-  if (v >= 100000000000000L) { return 15; }
-  if (v >= 10000000000000L) { return 14; }
-  if (v >= 1000000000000L) { return 13; }
-  if (v >= 100000000000L) { return 12; }
-  if (v >= 10000000000L) { return 11; }
-  if (v >= 1000000000L) { return 10; }
-  if (v >= 100000000L) { return 9; }
-  if (v >= 10000000L) { return 8; }
-  if (v >= 1000000L) { return 7; }
-  if (v >= 100000L) { return 6; }
-  if (v >= 10000L) { return 5; }
-  if (v >= 1000L) { return 4; }
-  if (v >= 100L) { return 3; }
-  if (v >= 10L) { return 2; }
-  return 1;
+
+inline int int_log2_64(uint64_t x) { return 63 - leading_zeroes_64(x | 1); }
+
+/**
+ * Reference:  
+ * Daniel Lemire, "Computing the number of digits of an integer even faster," in Daniel Lemire's blog, June 3, 2021, https://lemire.me/blog/2021/06/03/computing-the-number-of-digits-of-an-integer-even-faster/.
+ */
+inline int fast_digit_count32(uint32_t x) {
+  static uint64_t table[] = {
+      4294967296,  8589934582,  8589934582,  8589934582,  12884901788,
+      12884901788, 12884901788, 17179868184, 17179868184, 17179868184,
+      21474826480, 21474826480, 21474826480, 21474826480, 25769703776,
+      25769703776, 25769703776, 30063771072, 30063771072, 30063771072,
+      34349738368, 34349738368, 34349738368, 34349738368, 38554705664,
+      38554705664, 38554705664, 41949672960, 41949672960, 41949672960,
+      42949672960, 42949672960};
+  return uint32_t((x + table[int_log2_64(x)]) >> 32);
+}
+
+
+/**
+ * Reference:  
+ * Daniel Lemire, "Counting the digits of 64-bit integers," in Daniel Lemire's blog, January 7, 2025, https://lemire.me/blog/2025/01/07/counting-the-digits-of-64-bit-integers/.
+ */
+inline int fast_digit_count64(uint64_t x) {
+  static uint64_t table[] = {9,
+                             99,
+                             999,
+                             9999,
+                             99999,
+                             999999,
+                             9999999,
+                             99999999,
+                             999999999,
+                             9999999999,
+                             99999999999,
+                             999999999999,
+                             9999999999999,
+                             99999999999999,
+                             999999999999999ULL,
+                             9999999999999999ULL,
+                             99999999999999999ULL,
+                             999999999999999999ULL,
+                             9999999999999999999ULL};
+  int y = (19 * int_log2_64(x) >> 6);
+  y += x > table[y];
+  return y + 1;
 }
 
 // Adapted from the Ryu implementation.
@@ -63,9 +138,8 @@ int to_chars(T mantissa, int32_t exponent, bool sign, char* const result) {
   if (sign)
     result[index++] = '-';
 
-  const uint32_t olength = is_double ? decimalLength17(mantissa)
-                                     : decimalLength9(mantissa);
-
+  const uint32_t olength = is_double ? fast_digit_count64(mantissa) 
+                                     : fast_digit_count32(mantissa);
   // Print the decimal digits.
   // for (uint32_t i = 0; i < olength - 1; ++i) {
   //   const uint32_t c = mantissa % 10; mantissa /= 10;
@@ -74,33 +148,29 @@ int to_chars(T mantissa, int32_t exponent, bool sign, char* const result) {
   // result[index] = '0' + mantissa % 10;
 
   uint32_t i = 0;
-  if constexpr (is_double) {
-    // We prefer 32-bit operations, even on 64-bit platforms.
-    // We have at most 17 digits, and uint32_t can store 9 digits.
-    // If mantissa doesn't fit into uint32_t, we cut off 8 digits,
-    // so the rest will fit into uint32_t.
-    if ((mantissa >> 32) != 0) {
-      // Expensive 64-bit division.
-      const uint64_t q = mantissa / 100'000'000;
-      uint32_t temp = ((uint32_t) mantissa) - 100'000'000 * ((uint32_t) q);
-      mantissa = q;
+    // We take care of the least significant eight digits first.
+  if (mantissa >= 100'000'000) {
+    // Expensive 64-bit division.
+    const uint64_t q = mantissa / 100'000'000;
+    uint32_t temp = mantissa % 100'000'000;
+    mantissa = q;
 
-      const uint32_t c = temp % 10000;
-      temp /= 10000;
-      const uint32_t d = temp % 10000;
-      const uint32_t c0 = (c % 100) << 1;
-      const uint32_t c1 = (c / 100) << 1;
-      const uint32_t d0 = (d % 100) << 1;
-      const uint32_t d1 = (d / 100) << 1;
-      memcpy(result + index + olength - 1, DIGIT_TABLE + c0, 2);
-      memcpy(result + index + olength - 3, DIGIT_TABLE + c1, 2);
-      memcpy(result + index + olength - 5, DIGIT_TABLE + d0, 2);
-      memcpy(result + index + olength - 7, DIGIT_TABLE + d1, 2);
-      i += 8;
-    }
+    const uint32_t c = temp % 10000;
+    temp /= 10000;
+    const uint32_t d = temp % 10000;
+    const uint32_t c0 = (c % 100) << 1;
+    const uint32_t c1 = (c / 100) << 1;
+    const uint32_t d0 = (d % 100) << 1;
+    const uint32_t d1 = (d / 100) << 1;
+    memcpy(result + index + olength - 1, hundreds_digit_table + c0, 2);
+    memcpy(result + index + olength - 3, hundreds_digit_table + c1, 2);
+    memcpy(result + index + olength - 5, hundreds_digit_table + d0, 2);
+    memcpy(result + index + olength - 7, hundreds_digit_table + d1, 2);
+    i += 8;
   }
 
-  uint32_t output = (uint32_t) mantissa;
+
+  uint64_t output = mantissa;
   while (output >= 10000) {
 #ifdef __clang__ // https://bugs.llvm.org/show_bug.cgi?id=38217
     const uint32_t c = output - 10000 * (output / 10000);
@@ -110,21 +180,21 @@ int to_chars(T mantissa, int32_t exponent, bool sign, char* const result) {
     output /= 10000;
     const uint32_t c0 = (c % 100) << 1;
     const uint32_t c1 = (c / 100) << 1;
-    memcpy(result + index + olength - i - 1, DIGIT_TABLE + c0, 2);
-    memcpy(result + index + olength - i - 3, DIGIT_TABLE + c1, 2);
+    memcpy(result + index + olength - i - 1, hundreds_digit_table + c0, 2);
+    memcpy(result + index + olength - i - 3, hundreds_digit_table + c1, 2);
     i += 4;
   }
   if (output >= 100) {
     const uint32_t c = (output % 100) << 1;
     output /= 100;
-    memcpy(result + index + olength - i - 1, DIGIT_TABLE + c, 2);
+    memcpy(result + index + olength - i - 1, hundreds_digit_table + c, 2);
     i += 2;
   }
   if (output >= 10) {
-    const uint32_t c = output << 1;
+    const uint64_t c = output << 1;
     // We can't use memcpy here: the decimal dot goes between these two digits.
-    result[index + olength - i] = DIGIT_TABLE[c + 1];
-    result[index] = DIGIT_TABLE[c];
+    result[index + olength - i] = hundreds_digit_table[c + 1];
+    result[index] = hundreds_digit_table[c];
   } else {
     result[index] = (char) ('0' + output);
   }
@@ -147,7 +217,7 @@ int to_chars(T mantissa, int32_t exponent, bool sign, char* const result) {
 
   const auto handle_common_cases = [&]() {
     if (exp >= 10) {
-      memcpy(result + index, DIGIT_TABLE + 2 * exp, 2);
+      memcpy(result + index, hundreds_digit_table + 2 * exp, 2);
       index += 2;
     } else
       result[index++] = (char)('0' + exp);
@@ -155,7 +225,7 @@ int to_chars(T mantissa, int32_t exponent, bool sign, char* const result) {
   if constexpr (is_double) {
     if (exp >= 100) {
       const int32_t c = exp % 10;
-      memcpy(result + index, DIGIT_TABLE + 2 * (exp / 10), 2);
+      memcpy(result + index, hundreds_digit_table + 2 * (exp / 10), 2);
       result[index + 2] = (char) ('0' + c);
       index += 3;
     } else

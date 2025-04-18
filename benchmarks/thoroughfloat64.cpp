@@ -90,7 +90,7 @@ std::vector<test_case> load_doubles_from_file(const std::string& filename) {
   return numbers;
 }
 
-void run_file_test(const std::string& filename, bool errol) {
+void run_file_test(const std::string& filename, bool errol, const std::vector<std::string>& algo_filter = {}) {
   constexpr auto precision = std::numeric_limits<double>::digits10;
   fmt::println("{:20} {:20}", "Algorithm", "Valid shortest serialization");
 
@@ -113,6 +113,22 @@ void run_file_test(const std::string& filename, bool errol) {
       fmt::print("# skipping {} because it is the reference.\n", algo.name);
       continue;
     }
+    
+    // Apply filter if provided
+    if (!algo_filter.empty()) {
+      bool matched = false;
+      for (const auto &f : algo_filter) {
+        if (algo.name.find(f) != std::string::npos) {
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        fmt::print("# filtered out {}\n", algo.name);
+        continue;
+      }
+    }
+    
     bool incorrect = false;
     char buf1[100], buf2[100];
     std::span<char> bufRef(buf1, sizeof(buf1)), bufAlgo(buf2, sizeof(buf2));
@@ -190,6 +206,9 @@ int main(int argc, char **argv) {
         ("f,file",
          "Input file containing doubles (one per line)",
          cxxopts::value<std::string>()->default_value(THOROUGH_DATA_FILE))
+        ("a,algorithm",
+         "Filter algorithms to test (comma-separated)",
+         cxxopts::value<std::vector<std::string>>()->default_value(""))
         ("h,help",
          "Print usage.");
     const auto result = options.parse(argc, argv);
@@ -198,9 +217,7 @@ int main(int argc, char **argv) {
       fmt::print("{}\n", options.help());
       return EXIT_SUCCESS;
     }
-
-
-    run_file_test(result["file"].as<std::string>(), result["errol"].as<bool>());
+    run_file_test(result["file"].as<std::string>(), result["errol"].as<bool>(), result["algorithm"].as<std::vector<std::string>>());
   } catch (const std::exception &e) {
     fmt::print("error parsing options: {}\n", e.what());
     return EXIT_FAILURE;

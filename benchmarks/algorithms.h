@@ -82,7 +82,7 @@ struct BenchArgs {
   std::string name{};
   int (*func)(T, std::span<char>&){};
   bool used{};
-  unsigned char testRepeat{100};
+  size_t testRepeat{100};
 };
 
 template<arithmetic_float T>

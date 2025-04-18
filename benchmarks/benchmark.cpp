@@ -26,9 +26,21 @@
 using Benchmarks::arithmetic_float;
 using Benchmarks::BenchArgs;
 
+bool is_matched(const std::string &str, const std::span<std::string> filter) {
+  if (filter.empty()) {
+    return true;
+  }
+  for (const auto &f : filter) {
+    if (str.find(f) != std::string::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
 template <arithmetic_float T>
 void evaluateProperties(const std::vector<T> &lines,
-                        const std::array<BenchArgs<T>, Benchmarks::COUNT> &args, const std::string& filter = "") {
+                        const std::array<BenchArgs<T>, Benchmarks::COUNT> &args, const std::span<std::string> filter = {}) {
   constexpr auto precision = std::numeric_limits<T>::digits10;
   fmt::println("{:20} {:20}", "Algorithm", "Valid round-trip");
 
@@ -38,7 +50,7 @@ void evaluateProperties(const std::vector<T> &lines,
       continue;
     }
     // Apply filter if provided
-    if (!filter.empty() && std::string(filter).find(algo.name) == std::string::npos) {
+    if (!is_matched(algo.name, filter)) {
       std::cout << "# filtered out " << algo.name << std::endl;
       continue;
     }
@@ -73,14 +85,14 @@ void evaluateProperties(const std::vector<T> &lines,
 
 template <arithmetic_float T>
 void process(const std::vector<T> &lines,
-             const std::array<BenchArgs<T>, Benchmarks::COUNT> &args, const std::string& filter = "") {
+             const std::array<BenchArgs<T>, Benchmarks::COUNT> &args, const std::span<std::string> filter = {}) {
   for (const auto &algo : args) {
     if (!algo.used) {
       std::cout << "# skipping " << algo.name << std::endl;
       continue;
     }
     // Apply filter if provided
-    if (!filter.empty() && std::string(filter).find(algo.name) == std::string::npos) {
+    if (!is_matched(algo.name, filter)) {
       std::cout << "# filtered out " << algo.name << std::endl;
       continue;
     }
@@ -155,8 +167,10 @@ int main(int argc, char **argv) {
         cxxopts::value<bool>()->default_value("false"))
         ("e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0).",
         cxxopts::value<bool>()->default_value("false"))
-        ("a,algo-filter", "Filter algorithms by name substring.",
-          cxxopts::value<std::string>()->default_value(""))
+        ("a,algo-filter", "Filter algorithms by name substring: you can use multiple filters separated by commas.",
+        cxxopts::value<std::vector<std::string>>()->default_value(""))
+        ("r,repeat", "Force a number of repetitions.",
+        cxxopts::value<size_t>()->default_value("0"))
         ("h,help", "Print usage.");
     const auto result = options.parse(argc, argv);
 
@@ -164,9 +178,9 @@ int main(int argc, char **argv) {
       std::cout << options.help() << std::endl;
       return EXIT_SUCCESS;
     }
-
+    const size_t repeat = result["repeat"].as<size_t>();
     const bool single = result["single"].as<bool>();
-    const std::string filter = result["algo-filter"].as<std::string>();
+    std::vector<std::string> filter = result["algo-filter"].as<std::vector<std::string>>();
     std::cout << "number type: binary"
               << (single ? "32 (float)" : "64 (double)") << std::endl;
 
@@ -197,6 +211,14 @@ int main(int argc, char **argv) {
       algorithms = Benchmarks::initArgs<float>(errol);
     else
       algorithms = Benchmarks::initArgs<double>(errol);
+
+    if(repeat > 0) {
+      std::cout << "# forcing repeat count to " << repeat << std::endl;
+      std::visit([repeat](auto &args) {
+        for (auto &arg : args)
+          arg.testRepeat = repeat;
+      }, algorithms);
+    }
 
     const bool test = result["test"].as<bool>();
     std::visit([test,&filter](const auto &lines, const auto &args) {

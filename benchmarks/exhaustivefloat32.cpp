@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string_view>
 #include <charconv>
+#include <vector>
 
 #include "algorithms.h"
 #include "cxxopts.hpp"
@@ -59,7 +60,7 @@ std::optional<float> parse_float(std::string_view sv) {
   return std::nullopt;
 }
 
-void run_exhaustive32(bool errol) {
+void run_exhaustive32(bool errol, const std::vector<std::string>& algo_filter = {}) {
   constexpr auto precision = std::numeric_limits<float>::digits10;
   fmt::println("{:20} {:20}", "Algorithm", "Valid shortest serialization");
 
@@ -75,6 +76,22 @@ void run_exhaustive32(bool errol) {
       fmt::print("# skipping {} because it is the reference.\n", algo.name);
       continue;
     }
+    
+    // Apply filter if provided
+    if (!algo_filter.empty()) {
+      bool matched = false;
+      for (const auto &f : algo_filter) {
+        if (algo.name.find(f) != std::string::npos) {
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        fmt::print("# filtered out {}\n", algo.name);
+        continue;
+      }
+    }
+    
     bool incorrect = false;
     char buf1[100], buf2[100];
     std::span<char> bufRef(buf1, sizeof(buf1)), bufAlgo(buf2, sizeof(buf2));
@@ -149,15 +166,21 @@ int main(int argc, char **argv) {
     options.add_options()(
         "e,errol",
         "Enable errol3 (current impl. returns invalid values, e.g., for 0).",
-        cxxopts::value<bool>()->default_value("false"))("h,help",
-                                                        "Print usage.");
+        cxxopts::value<bool>()->default_value("false"))(
+        "a,algorithm",
+        "Specify which algorithm(s) to test (comma-separated).",
+        cxxopts::value<std::vector<std::string>>()->default_value({}))(
+        "h,help",
+        "Print usage.");
     const auto result = options.parse(argc, argv);
 
     if (result["help"].as<bool>()) {
       fmt::print("{}\n", options.help());
       return EXIT_SUCCESS;
     }
-    run_exhaustive32(result["errol"].as<bool>());
+
+    auto algo_filter = result["algorithm"].as<std::vector<std::string>>();
+    run_exhaustive32(result["errol"].as<bool>(), algo_filter);
   } catch (const std::exception &e) {
     fmt::print("error parsing options: {}\n", e.what());
     return EXIT_FAILURE;
