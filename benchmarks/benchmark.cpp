@@ -23,6 +23,7 @@
 #include <string>
 #include <variant>
 #include <fast_float/fast_float.h>
+#include <fmt/core.h>
 
 using Benchmarks::arithmetic_float;
 using Benchmarks::BenchArgs;
@@ -47,12 +48,12 @@ void evaluateProperties(const std::vector<T> &lines,
 
   for (const auto &algo : args) {
     if (!algo.used) {
-      std::cout << "# skipping " << algo.name << std::endl;
+      fmt::println("# skipping {}", algo.name);
       continue;
     }
     // Apply filter if provided
     if (!is_matched(algo.name, filter)) {
-      std::cout << "# filtered out " << algo.name << std::endl;
+      fmt::println("# filtered out {}", algo.name);
       continue;
     }
     char buf1[100], buf2[100];
@@ -93,7 +94,7 @@ struct diy_float_t {
 template <arithmetic_float T>
 void process(const std::vector<T> &lines,
              const std::array<BenchArgs<T>, Benchmarks::COUNT> &args, const std::span<std::string> filter = {}) {
-  // We have a special algorithm for the reference:
+  // We have a special algorithm for the string generation:
   std::string just_string = "just_string";
   if (is_matched(just_string, filter)) {
     std::vector<diy_float_t> parsed;
@@ -110,17 +111,16 @@ void process(const std::vector<T> &lines,
       return volume;
     }, 100);
   } else {
-    std::cout << "# skipping " << just_string << std::endl;
-  
+    fmt::println("# skipping {}", just_string);
   }
   for (const auto &algo : args) {
     if (!algo.used) {
-      std::cout << "# skipping " << algo.name << std::endl;
+      fmt::println("# skipping {}", algo.name);
       continue;
     }
     // Apply filter if provided
     if (!is_matched(algo.name, filter)) {
-      std::cout << "# filtered out " << algo.name << std::endl;
+      fmt::println("# filtered out {}", algo.name);
       continue;
     }
     pretty_print(lines, algo.name, [&algo](const std::vector<T> &lines) -> int {
@@ -139,7 +139,7 @@ template <typename T>
 std::vector<T> fileload(const std::string &filename) {
   std::ifstream inputfile(filename);
   if (!inputfile) {
-    std::cerr << "can't open " << filename << std::endl;
+    fmt::print(stderr, "can't open {}\n", filename);
     return {};
   }
 
@@ -150,24 +150,21 @@ std::vector<T> fileload(const std::string &filename) {
       lines.push_back(std::is_same_v<T, float> ? std::stof(line)
                                                : std::stod(line));
     } catch (...) {
-      std::cerr << "problem with " << line << "\n"
-                << "We expect floating-point numbers (one per line)."
-                << std::endl;
+      fmt::print(stderr, "problem with {}\nWe expect floating-point numbers (one per line).\n", line);
       std::abort();
     }
   }
-  std::cout << "# read " << lines.size() << " lines " << std::endl;
+  fmt::println("# read {} lines", lines.size());
   return lines;
 }
 
 template <typename T>
 std::vector<T> get_random_numbers(size_t howmany,
                                   const std::string &random_model) {
-  std::cout << "# parsing random numbers" << std::endl;
+  fmt::println("# parsing random numbers");
   std::vector<T> lines;
   auto g = get_generator_by_name<T>(random_model);
-  std::cout << "model: " << g->describe() << "\n"
-            << "volume: " << howmany << " floats" << std::endl;
+  fmt::print("model: {}\nvolume: {} floats\n", g->describe(), howmany);
   lines.reserve(howmany); // let us reserve plenty of memory.
   for (size_t i = 0; i < howmany; i++) {
     const T line = g->new_float();
@@ -203,14 +200,13 @@ int main(int argc, char **argv) {
     const auto result = options.parse(argc, argv);
 
     if (result["help"].as<bool>()) {
-      std::cout << options.help() << std::endl;
+      fmt::print("{}\n", options.help());
       return EXIT_SUCCESS;
     }
     const size_t repeat = result["repeat"].as<size_t>();
     const bool single = result["single"].as<bool>();
     std::vector<std::string> filter = result["algo-filter"].as<std::vector<std::string>>();
-    std::cout << "number type: binary"
-              << (single ? "32 (float)" : "64 (double)") << std::endl;
+    fmt::println("number type: binary{}", (single ? "32 (float)" : "64 (double)"));
 
     std::variant<std::vector<float>, std::vector<double>> numbers;
     const auto filename = result["file"].as<std::string>();
@@ -221,9 +217,7 @@ int main(int argc, char **argv) {
         numbers = get_random_numbers<float>(volume, model);
       else
         numbers = get_random_numbers<double>(volume, model);
-      std::cout << "# You can also provide a filename (with the -f flag): "
-                   "it should contain one string per line corresponding to a number"
-                << std::endl;
+      fmt::println("# You can also provide a filename (with the -f flag): it should contain one string per line corresponding to a number");
     }
     else {
       if (single)
@@ -241,7 +235,7 @@ int main(int argc, char **argv) {
       algorithms = Benchmarks::initArgs<double>(errol);
 
     if(repeat > 0) {
-      std::cout << "# forcing repeat count to " << repeat << std::endl;
+      fmt::println("# forcing repeat count to {}", repeat);
       std::visit([repeat](auto &args) {
         for (auto &arg : args)
           arg.testRepeat = repeat;
@@ -260,7 +254,20 @@ int main(int argc, char **argv) {
       }
     }, numbers, algorithms);
   } catch (const std::exception &e) {
-    std::cout << "error parsing options: " << e.what() << std::endl;
+    fmt::println("Error parsing options: {}", e.what());
+    fmt::println("\nUSAGE GUIDE:");
+    fmt::println("  ./benchmark [OPTIONS]");
+    fmt::println("\nCOMMAND SUMMARY:");
+    fmt::println("  The benchmark tool evaluates the performance of different floating-point to string");
+    fmt::println("  conversion algorithms. It can use either synthetic data or a file containing");
+    fmt::println("  floating-point numbers (one per line).");
+    fmt::println("\nEXAMPLES:");
+    fmt::println("  ./benchmark --single                    # Run benchmark with single precision (float)");
+    fmt::println("  ./benchmark --file=data/canada.txt      # Run benchmark using numbers from a file");
+    fmt::println("  ./benchmark --test                      # Test correctness instead of performance");
+    fmt::println("  ./benchmark --volume=1000 --model=uniform # Generate 1000 uniform random numbers");
+    fmt::println("  ./benchmark --algo-filter=ryu,grisu     # Only test algorithms containing 'ryu' or 'grisu'");
+    fmt::println("\nFor full options list, run: ./benchmark --help");
     return EXIT_FAILURE;
   }
 }

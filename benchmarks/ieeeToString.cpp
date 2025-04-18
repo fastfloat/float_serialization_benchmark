@@ -57,7 +57,7 @@ IEEE754d decode_ieee754(double f) {
 }
 
 ////////////////////////
-// We should use https://en.cppreference.com/w/cpp/numeric/countl_zero 
+// We should use https://en.cppreference.com/w/cpp/numeric/countl_zero
 ////////////////////////
 #if WE_HAVE_VISUAL_STUDIO
 inline int leading_zeroes_64(uint64_t input_num) {
@@ -84,7 +84,7 @@ inline int leading_zeroes_64(uint64_t input_num) {
 inline int int_log2_64(uint64_t x) { return 63 - leading_zeroes_64(x | 1); }
 
 /**
- * Reference:  
+ * Reference:
  * Daniel Lemire, "Computing the number of digits of an integer even faster," in Daniel Lemire's blog, June 3, 2021, https://lemire.me/blog/2021/06/03/computing-the-number-of-digits-of-an-integer-even-faster/.
  */
 inline int fast_digit_count32(uint32_t x) {
@@ -101,7 +101,7 @@ inline int fast_digit_count32(uint32_t x) {
 
 
 /**
- * Reference:  
+ * Reference:
  * Daniel Lemire, "Counting the digits of 64-bit integers," in Daniel Lemire's blog, January 7, 2025, https://lemire.me/blog/2025/01/07/counting-the-digits-of-64-bit-integers/.
  */
 inline int fast_digit_count64(uint64_t x) {
@@ -133,12 +133,13 @@ inline int fast_digit_count64(uint64_t x) {
 template <typename T>
 int to_chars(T mantissa, int32_t exponent, bool sign, char* const result) {
   constexpr bool is_double = sizeof(T) == 8;
+  static_assert(is_double || sizeof(T) == 4, "Unsupported type size");
 
   int index = 0;
   if (sign)
     result[index++] = '-';
   // We use fast arithmetic to compute the number of digits.
-  const uint32_t olength = is_double ? fast_digit_count64(mantissa) 
+  const uint32_t olength = is_double ? fast_digit_count64(mantissa)
                                      : fast_digit_count32(mantissa);
   // Print the decimal digits.
   // for (uint32_t i = 0; i < olength - 1; ++i) {
@@ -210,30 +211,32 @@ int to_chars(T mantissa, int32_t exponent, bool sign, char* const result) {
   }
 
   // Print the exponent.
-  result[index++] = 'E';
   int32_t exp = exponent + (int32_t) olength - 1;
-  if (exp < 0) {
-    result[index++] = '-';
-    exp = -exp;
-  }
+  if(mantissa && exp) { // We do not print the exponent if mantissa is zero.
+    result[index++] = 'E';
+    if (exp < 0) {
+      result[index++] = '-';
+      exp = -exp;
+    }
 
-  const auto handle_common_cases = [&]() {
-    if (exp >= 10) {
-      memcpy(result + index, hundreds_digit_table + 2 * exp, 2);
-      index += 2;
-    } else
-      result[index++] = (char)('0' + exp);
-  };
-  if constexpr (is_double) {
-    if (exp >= 100) {
-      const int32_t c = exp % 10;
-      memcpy(result + index, hundreds_digit_table + 2 * (exp / 10), 2);
-      result[index + 2] = (char) ('0' + c);
-      index += 3;
+    const auto handle_common_cases = [&]() {
+      if (exp >= 10) {
+        memcpy(result + index, hundreds_digit_table + 2 * exp, 2);
+        index += 2;
+      } else
+        result[index++] = (char)('0' + exp);
+    };
+    if constexpr (is_double) {
+      if (exp >= 100) {
+        const int32_t c = exp % 10;
+        memcpy(result + index, hundreds_digit_table + 2 * (exp / 10), 2);
+        result[index + 2] = (char) ('0' + c);
+        index += 3;
+      } else
+        handle_common_cases();
     } else
       handle_common_cases();
-  } else
-    handle_common_cases();
+  }
 
   return index;
 }

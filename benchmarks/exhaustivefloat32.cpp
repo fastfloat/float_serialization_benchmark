@@ -48,14 +48,14 @@ std::optional<float> parse_float(std::string_view sv) {
   float result;
   const char* begin = sv.data();
   const char* end = sv.data() + sv.size();
-  
+
   auto [ptr, ec] = std::from_chars(begin, end, result);
-  
+
   // Check if parsing succeeded and consumed the entire string
   if (ec == std::errc{} && ptr == end) {
       return result;
   }
-  
+
   // Return nullopt if parsing failed or didn't consume all input
   return std::nullopt;
 }
@@ -76,7 +76,7 @@ void run_exhaustive32(bool errol, const std::vector<std::string>& algo_filter = 
       fmt::print("# skipping {} because it is the reference.\n", algo.name);
       continue;
     }
-    
+
     // Apply filter if provided
     if (!algo_filter.empty()) {
       bool matched = false;
@@ -91,7 +91,7 @@ void run_exhaustive32(bool errol, const std::vector<std::string>& algo_filter = 
         continue;
       }
     }
-    
+
     bool incorrect = false;
     char buf1[100], buf2[100];
     std::span<char> bufRef(buf1, sizeof(buf1)), bufAlgo(buf2, sizeof(buf2));

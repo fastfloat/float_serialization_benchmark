@@ -50,14 +50,14 @@ std::optional<double> parse_double(std::string_view sv) {
   double result;
   const char* begin = sv.data();
   const char* end = sv.data() + sv.size();
-  
+
   auto [ptr, ec] = std::from_chars(begin, end, result);
-  
+
   // Check if parsing succeeded and consumed the entire string
   if (ec == std::errc{} && ptr == end) {
       return result;
   }
-  
+
   // Return nullopt if parsing failed or didn't consume all input
   return std::nullopt;
 }
@@ -72,7 +72,7 @@ std::vector<test_case> load_doubles_from_file(const std::string& filename) {
   std::vector<test_case> numbers;
   std::ifstream file(filename);
   std::string line;
-  
+
   if (!file.is_open()) {
     fmt::print("Error: Could not open file {}\n", filename);
     return numbers;
@@ -85,7 +85,7 @@ std::vector<test_case> load_doubles_from_file(const std::string& filename) {
       fmt::print("Warning: Could not parse '{}' as double, skipping\n", line);
     }
   }
-  
+
   file.close();
   return numbers;
 }
@@ -113,7 +113,7 @@ void run_file_test(const std::string& filename, bool errol, const std::vector<st
       fmt::print("# skipping {} because it is the reference.\n", algo.name);
       continue;
     }
-    
+
     // Apply filter if provided
     if (!algo_filter.empty()) {
       bool matched = false;
@@ -128,13 +128,13 @@ void run_file_test(const std::string& filename, bool errol, const std::vector<st
         continue;
       }
     }
-    
+
     bool incorrect = false;
     char buf1[100], buf2[100];
     std::span<char> bufRef(buf1, sizeof(buf1)), bufAlgo(buf2, sizeof(buf2));
     fmt::print("# processing {}", algo.name);
     fflush(stdout);
-    
+
     size_t total = test_values.size();
     for (size_t i = 0; i < total; ++i) {
       if (i % (total/10) == 0 && total > 10) {
@@ -145,7 +145,7 @@ void run_file_test(const std::string& filename, bool errol, const std::vector<st
       const std::string& str_value = test_values[i].str_value;
       if (std::isnan(d) || std::isinf(d))
         continue;
-      
+
       const size_t vRef = Benchmarks::dragonbox(d, bufRef);
       const size_t vAlgo = algo.func(d, bufAlgo);
 
@@ -157,7 +157,7 @@ void run_file_test(const std::string& filename, bool errol, const std::vector<st
       auto countAlgo = count_significant_digits(svAlgo);
       auto backRef = parse_double(svRef);
       auto backAlgo = parse_double(svAlgo);
-      
+
       if(!backRef || !backAlgo) {
         incorrect = true;
         fmt::print(" parse error: case: {}; d = {}, bufRef = {}, bufAlgo = {}", str_value, double_to_hex(d),
