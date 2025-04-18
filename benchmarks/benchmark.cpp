@@ -8,6 +8,7 @@
  */
 
 #include "algorithms.h"
+#include <vector>
 #define IEEE_8087
 #include "benchutil.h"
 #include "cxxopts.hpp"
@@ -83,9 +84,35 @@ void evaluateProperties(const std::vector<T> &lines,
   }
 }
 
+struct diy_float_t {
+		uint64_t	significand;
+		int							exponent;
+		bool						is_negative;
+};
+
 template <arithmetic_float T>
 void process(const std::vector<T> &lines,
              const std::array<BenchArgs<T>, Benchmarks::COUNT> &args, const std::span<std::string> filter = {}) {
+  // We have a special algorithm for the reference:
+  std::string just_string = "just_string";
+  if (is_matched(just_string, filter)) {
+    std::vector<diy_float_t> parsed;
+    for(auto d : lines) {
+      auto v = jkj::grisu_exact(d);
+      parsed.emplace_back(v.significand, v.exponent, v.is_negative);
+    }
+    pretty_print(parsed, just_string, [](const std::vector<diy_float_t>& parsed) -> int {
+      int volume = 0;
+      char buf[100];
+      std::span<char> bufspan(buf, sizeof(buf));
+      for (const auto v : parsed)
+        volume +=  to_chars(v.significand, v.exponent, v.is_negative, bufspan.data());
+      return volume;
+    }, 100);
+  } else {
+    std::cout << "# skipping " << just_string << std::endl;
+  
+  }
   for (const auto &algo : args) {
     if (!algo.used) {
       std::cout << "# skipping " << algo.name << std::endl;
@@ -105,6 +132,7 @@ void process(const std::vector<T> &lines,
       return volume;
     }, algo.testRepeat);
   }
+
 }
 
 template <typename T>
