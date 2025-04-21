@@ -3,7 +3,6 @@ add_executable(benchmark
 )
 add_library(benchmark_deps INTERFACE)
 add_library(ieeeToString ieeeToString.cpp)
-target_include_directories(ieeeToString PRIVATE ${ryu_SOURCE_DIR})
 target_link_libraries(benchmark_deps INTERFACE ieeeToString)
 include(CheckSourceCompiles)
 check_source_compiles(CXX "
