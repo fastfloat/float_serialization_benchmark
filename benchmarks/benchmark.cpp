@@ -86,7 +86,9 @@ void evaluateProperties(const std::vector<T> &lines,
 }
 
 struct diy_float_t {
-		uint64_t	significand;
+    diy_float_t(uint64_t significand, int exponent, bool is_negative)
+      : significand(significand), exponent(exponent), is_negative(is_negative) {}
+		uint64_t	      significand;
 		int							exponent;
 		bool						is_negative;
 };
