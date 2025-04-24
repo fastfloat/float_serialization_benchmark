@@ -50,29 +50,23 @@ def parse_input(data):
         # Match lines that start a new entry (e.g., "just_string : 1365.92 MB/s ...")
         match_entry = re.match(r"(\S+)\s*:\s*[\d.]+\s*MB/s", line)
         if match_entry:
-            print(f"Found new entry: {match_entry.group(1)}")  # Debugging output
             current_entry = {"name": match_entry.group(1)}
             parsed_data.append(current_entry)
         if not current_entry:
             continue
-        print(f"reviewing line {line}")  # Debugging output
-
         # Match lines with ns/f
         match_ns = re.search(r"([\d.]+)\s*ns/f", line)
         if match_ns and current_entry:
-            print(f"Found ns/f: {match_ns.group(1)}")
             current_entry["ns_per_float"] = float(match_ns.group(1))
 
         # Match lines with instructions/float (i/f)
         match_inst_float = re.search(r"([\d.]+)\s*i/f", line)
         if match_inst_float and current_entry:
-            print(f"Found i/f: {match_inst_float.group(1)}")
             current_entry["inst_per_float"] = float(match_inst_float.group(1))
 
         # Match lines with instructions/cycle (i/c)
         match_inst_cycle = re.search(r"([\d.]+)\s*i/c", line)
         if match_inst_cycle and current_entry:
-            print(f"Found i/c: {match_inst_cycle.group(1)}")
             current_entry["inst_per_cycle"] = float(match_inst_cycle.group(1))
 
     # Filter out incomplete entries
@@ -118,6 +112,5 @@ if __name__ == "__main__":
     else:
         raw_input = sys.stdin.read()
     parsed_data = parse_input(raw_input)
-    print(f"Parsed data: {parsed_data}")  # Debugging output
     latex_output = generate_latex_table(parsed_data)
     print(latex_output)
