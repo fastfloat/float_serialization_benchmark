@@ -43,7 +43,6 @@ def parse_input(data):
 
     for line in lines:
         line = line.strip()
-        print(f"Processing line: {line}")  # Debugging output
         # Skip empty lines or comments
         if not line or line.startswith("#"):
             continue
@@ -99,10 +98,6 @@ def generate_latex_table(data):
 \end{tabular}
 """
     return latex_table
-
-if __name__ == "f__main__":
-    print(format_to_two_sig_digits(336.0))
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate LaTeX table from performance data")
