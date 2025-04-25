@@ -8,7 +8,6 @@
  */
 
 #include "algorithms.h"
-#include <vector>
 #define IEEE_8087
 #include "benchutil.h"
 #include "cxxopts.hpp"
@@ -22,10 +21,10 @@
 #include <iostream>
 #include <string>
 #include <variant>
+#include <vector>
 #include <fast_float/fast_float.h>
 #include <fmt/core.h>
 
-using Benchmarks::arithmetic_float;
 using Benchmarks::BenchArgs;
 
 bool is_matched(const std::string &str, const std::span<std::string> filter) {
@@ -42,8 +41,8 @@ bool is_matched(const std::string &str, const std::span<std::string> filter) {
 
 template <arithmetic_float T>
 void evaluateProperties(const std::vector<T> &lines,
-                        const std::array<BenchArgs<T>, Benchmarks::COUNT> &args, const std::span<std::string> filter = {}) {
-  constexpr auto precision = std::numeric_limits<T>::digits10;
+                        const std::array<BenchArgs<T>, Benchmarks::COUNT> &args,
+                        const std::span<std::string> filter = {}) {
   fmt::println("{:20} {:20}", "Algorithm", "Valid round-trip");
 
   for (const auto &algo : args) {

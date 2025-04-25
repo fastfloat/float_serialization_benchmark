@@ -22,6 +22,7 @@ template <typename T> std::string accurate_to_string(T d) {
   answer.resize(written);
   return answer;
 }
+
 template <typename T> std::string integer_to_string(T d) {
   std::stringstream ss;
   ss << d;

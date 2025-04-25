@@ -30,6 +30,7 @@
 #include "grisu3.h"
 #include "grisu_exact.h"
 #include "ieeeToString.h"
+#include "floatutils.h"
 #include "ryu/ryu.h"
 #include "schubfach_32.h"
 #include "schubfach_64.h"
@@ -66,10 +67,6 @@ enum Algorithm {
   YY_DOUBLE = 17,
   COUNT // Keep last
 };
-
-template<typename T>
-concept arithmetic_float
-    = std::is_same_v<T, float> || std::is_same_v<T, double>;
 
 template<arithmetic_float T>
 struct BenchArgs {

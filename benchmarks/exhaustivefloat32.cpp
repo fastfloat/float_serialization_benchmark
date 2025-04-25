@@ -12,56 +12,9 @@
 
 #include "algorithms.h"
 #include "cxxopts.hpp"
-
-size_t count_significant_digits(std::string_view num_str) {
-  size_t count = 0;
-  size_t trailing_zeros = 0;
-  bool leading_zero = true;
-
-  for (char c : num_str) {
-    if (c == '.')
-      continue;
-    if (c == 'e' || c == 'E')
-      break; // Stop counting at exponent
-    if (std::isdigit(static_cast<unsigned char>(c))) {
-      if (c == '0') {
-        if (!leading_zero)
-          trailing_zeros++;
-        continue;
-      }
-      leading_zero = false;
-      count += trailing_zeros + 1;
-      trailing_zeros = 0;
-    }
-  }
-
-  return count;
-}
-
-std::string float_to_hex(float f) {
-  std::ostringstream oss;
-  oss << std::hexfloat << f;
-  return oss.str();
-}
-
-std::optional<float> parse_float(std::string_view sv) {
-  float result;
-  const char* begin = sv.data();
-  const char* end = sv.data() + sv.size();
-
-  auto [ptr, ec] = std::from_chars(begin, end, result);
-
-  // Check if parsing succeeded and consumed the entire string
-  if (ec == std::errc{} && ptr == end) {
-      return result;
-  }
-
-  // Return nullopt if parsing failed or didn't consume all input
-  return std::nullopt;
-}
+#include "floatutils.h"
 
 void run_exhaustive32(bool errol, const std::vector<std::string>& algo_filter = {}) {
-  constexpr auto precision = std::numeric_limits<float>::digits10;
   fmt::println("{:20} {:20}", "Algorithm", "Valid shortest serialization");
 
   std::array<Benchmarks::BenchArgs<float>, Benchmarks::COUNT> args;
@@ -110,7 +63,7 @@ void run_exhaustive32(bool errol, const std::vector<std::string>& algo_filter = 
         continue;
       // Reference output, we cannot use std::to_chars here, because it produces
       // the shortest representation, which is not necessarily the same as the
-      // as the representation using the fewest significant digits.
+      // representation using the fewest significant digits.
       // So we use dragonbox, which serves as the reference implementation.
       const size_t vRef = Benchmarks::dragonbox(d, bufRef);
       const size_t vAlgo = algo.func(d, bufAlgo);
@@ -120,12 +73,12 @@ void run_exhaustive32(bool errol, const std::vector<std::string>& algo_filter = 
 
       auto countRef = count_significant_digits(svRef);
       auto countAlgo = count_significant_digits(svAlgo);
-      auto backRef = parse_float(svRef);
-      auto backAlgo = parse_float(svAlgo);
+      auto backRef = parse_float<float>(svRef);
+      auto backAlgo = parse_float<float>(svAlgo);
       if(!backRef || !backAlgo) {
         incorrect = true;
-        fmt::print(" parse error: d = {}, bufRef = {}, bufAlgo = {}", float_to_hex(d),
-                   svRef, svAlgo);
+        fmt::print(" parse error: d = {}, bufRef = {}, bufAlgo = {}",
+                   float_to_hex<float>(d), svRef, svAlgo);
         fflush(stdout);
         break;
       }
@@ -134,20 +87,23 @@ void run_exhaustive32(bool errol, const std::vector<std::string>& algo_filter = 
       }
       if(*backRef != d) {
         incorrect = true;
-        fmt::print(" ref mismatch: d = {}, backRef = {}; svRef = {}, svAlgo = {}", float_to_hex(d), *backRef, svRef, svAlgo);
+        fmt::print(" ref mismatch: d = {}, backRef = {}; svRef = {}, svAlgo = {}",
+                   float_to_hex<float>(d), *backRef, svRef, svAlgo);
         fflush(stdout);
         break;
       }
       if(*backAlgo != d) {
         incorrect = true;
-        fmt::print(" algo mismatch: d = {}, backAlgo = {}; svRef = {}, svAlgo = {}, parsing the output with std::from_chars does not recover the original", float_to_hex(d), *backAlgo, svRef, svAlgo);
+        fmt::print(" algo mismatch: d = {}, backAlgo = {}; svRef = {}, svAlgo = {}, "
+                   "parsing the output with std::from_chars does not recover the original",
+                   float_to_hex<float>(d), *backAlgo, svRef, svAlgo);
         fflush(stdout);
         break;
       }
       if (countRef != countAlgo) {
         incorrect = true;
-        fmt::print(" mismatch: d = {}, bufRef = {}, bufAlgo = {}", float_to_hex(d),
-                   svRef, svAlgo);
+        fmt::print(" mismatch: d = {}, bufRef = {}, bufAlgo = {}",
+                   float_to_hex<float>(d), svRef, svAlgo);
         fflush(stdout);
         break;
       }
