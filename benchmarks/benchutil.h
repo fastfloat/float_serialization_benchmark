@@ -17,7 +17,7 @@ event_aggregate bench(const function_type &&function, size_t min_repeat = 10,
     N = 1;
   }
   volatile double dontoptimize = 0.0;
-  // We warmm up first. We warmup for at least 0.4s (by default). This makes
+  // We warm up first. We warmup for at least 0.4s (by default). This makes
   // sure that the processor is in a consistent state.
   event_aggregate warm_aggregate{};
   for (size_t i = 0; i < N; i++) {
@@ -89,4 +89,5 @@ void pretty_print(const std::vector<T> &lines, const std::string &name,
     printf("\n");
   }
 }
+
 #endif //// BENCHUTIL_H

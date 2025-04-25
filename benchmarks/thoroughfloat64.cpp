@@ -14,53 +14,7 @@
 
 #include "algorithms.h"
 #include "cxxopts.hpp"
-
-size_t count_significant_digits(std::string_view num_str) {
-  size_t count = 0;
-  size_t trailing_zeros = 0;
-  bool leading_zero = true;
-
-  for (char c : num_str) {
-    if (c == '.')
-      continue;
-    if (c == 'e' || c == 'E')
-      break; // Stop counting at exponent
-    if (std::isdigit(static_cast<unsigned char>(c))) {
-      if (c == '0') {
-        if (!leading_zero)
-          trailing_zeros++;
-        continue;
-      }
-      leading_zero = false;
-      count += trailing_zeros + 1;
-      trailing_zeros = 0;
-    }
-  }
-
-  return count;
-}
-
-std::string double_to_hex(double d) {
-  std::ostringstream oss;
-  oss << std::hexfloat << d;
-  return oss.str();
-}
-
-std::optional<double> parse_double(std::string_view sv) {
-  double result;
-  const char* begin = sv.data();
-  const char* end = sv.data() + sv.size();
-
-  auto [ptr, ec] = std::from_chars(begin, end, result);
-
-  // Check if parsing succeeded and consumed the entire string
-  if (ec == std::errc{} && ptr == end) {
-      return result;
-  }
-
-  // Return nullopt if parsing failed or didn't consume all input
-  return std::nullopt;
-}
+#include "floatutils.h"
 
 struct test_case {
   double value;
@@ -71,19 +25,17 @@ struct test_case {
 std::vector<test_case> load_doubles_from_file(const std::string& filename) {
   std::vector<test_case> numbers;
   std::ifstream file(filename);
-  std::string line;
 
   if (!file.is_open()) {
     fmt::print("Error: Could not open file {}\n", filename);
     return numbers;
   }
 
-  while (std::getline(file, line)) {
-    if (auto num = parse_double(line)) {
+  for (std::string line; std::getline(file, line);) {
+    if (auto num = parse_float<double>(line))
       numbers.emplace_back(*num,line);
-    } else {
+    else
       fmt::print("Warning: Could not parse '{}' as double, skipping\n", line);
-    }
   }
 
   file.close();
@@ -91,7 +43,6 @@ std::vector<test_case> load_doubles_from_file(const std::string& filename) {
 }
 
 void run_file_test(const std::string& filename, bool errol, const std::vector<std::string>& algo_filter = {}) {
-  constexpr auto precision = std::numeric_limits<double>::digits10;
   fmt::println("{:20} {:20}", "Algorithm", "Valid shortest serialization");
 
   std::array<Benchmarks::BenchArgs<double>, Benchmarks::COUNT> args;
@@ -155,13 +106,13 @@ void run_file_test(const std::string& filename, bool errol, const std::vector<st
 
       auto countRef = count_significant_digits(svRef);
       auto countAlgo = count_significant_digits(svAlgo);
-      auto backRef = parse_double(svRef);
-      auto backAlgo = parse_double(svAlgo);
+      auto backRef = parse_float<double>(svRef);
+      auto backAlgo = parse_float<double>(svAlgo);
 
       if(!backRef || !backAlgo) {
         incorrect = true;
-        fmt::print(" parse error: case: {}; d = {}, bufRef = {}, bufAlgo = {}", str_value, double_to_hex(d),
-                   svRef, svAlgo);
+        fmt::print(" parse error: case: {}; d = {}, bufRef = {}, bufAlgo = {}",
+                   str_value, float_to_hex<double>(d), svRef, svAlgo);
         fflush(stdout);
         break;
       }
@@ -170,20 +121,23 @@ void run_file_test(const std::string& filename, bool errol, const std::vector<st
       }
       if(*backRef != d) {
         incorrect = true;
-        fmt::print(" ref mismatch:case: {};  d = {}, backRef = {}; svRef = {}, svAlgo = {}", str_value, double_to_hex(d), *backRef, svRef, svAlgo);
+        fmt::print(" ref mismatch:case: {};  d = {}, backRef = {}; svRef = {}, svAlgo = {}",
+                   str_value, float_to_hex<double>(d), *backRef, svRef, svAlgo);
         fflush(stdout);
         break;
       }
       if(*backAlgo != d) {
         incorrect = true;
-        fmt::print(" algo mismatch: case: {}; d = {}, backAlgo = {}; svRef = {}, svAlgo = {}, parsing the output with std::from_chars does not recover the original", str_value, double_to_hex(d), *backAlgo, svRef, svAlgo);
+        fmt::print(" algo mismatch: case: {}; d = {}, backAlgo = {}; svRef = {}, svAlgo = {}, "
+                   "parsing the output with std::from_chars does not recover the original",
+                   str_value, float_to_hex<double>(d), *backAlgo, svRef, svAlgo);
         fflush(stdout);
         break;
       }
       if (countRef != countAlgo) {
         incorrect = true;
-        fmt::print(" mismatch: case: {}; d = {}, bufRef = {}, bufAlgo = {}", str_value, double_to_hex(d),
-                   svRef, svAlgo);
+        fmt::print(" mismatch: case: {}; d = {}, bufRef = {}, bufAlgo = {}",
+                   str_value, float_to_hex<double>(d), svRef, svAlgo);
         fflush(stdout);
         break;
       }
