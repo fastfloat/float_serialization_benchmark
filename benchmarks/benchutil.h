@@ -1,12 +1,25 @@
 #ifndef BENCHUTIL_H
 #define BENCHUTIL_H
 
-#include "counters/event_counter.h"
+#include <atomic>
 #include <cfloat>
 #include <cstdio>
 
-#include <atomic>
+#include "counters/event_counter.h"
+
 event_collector collector;
+
+bool algo_filtered_out(const std::string &algo_name,
+                       const std::vector<std::string> &algo_filter) {
+  if (algo_filter.empty())
+    return false;
+
+  for (const auto &f : algo_filter)
+    if (algo_name.find(f) != std::string::npos)
+      return false;
+
+  return true;
+}
 
 template <class function_type>
 event_aggregate bench(const function_type &&function, size_t min_repeat = 10,

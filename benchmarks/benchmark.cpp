@@ -27,22 +27,10 @@
 
 using Benchmarks::BenchArgs;
 
-bool is_matched(const std::string &str, const std::span<std::string> filter) {
-  if (filter.empty()) {
-    return true;
-  }
-  for (const auto &f : filter) {
-    if (str.find(f) != std::string::npos) {
-      return true;
-    }
-  }
-  return false;
-}
-
 template <arithmetic_float T>
 void evaluateProperties(const std::vector<T> &lines,
                         const std::array<BenchArgs<T>, Benchmarks::COUNT> &args,
-                        const std::span<std::string> filter = {}) {
+                        const std::vector<std::string> &algo_filter) {
   fmt::println("{:20} {:20}", "Algorithm", "Valid round-trip");
 
   for (const auto &algo : args) {
@@ -50,11 +38,11 @@ void evaluateProperties(const std::vector<T> &lines,
       fmt::println("# skipping {}", algo.name);
       continue;
     }
-    // Apply filter if provided
-    if (!is_matched(algo.name, filter)) {
+    if (algo_filtered_out(algo.name, algo_filter)) {
       fmt::println("# filtered out {}", algo.name);
       continue;
     }
+
     char buf1[100], buf2[100];
     std::span<char> bufRef(buf1, sizeof(buf1)), bufAlgo(buf2, sizeof(buf2));
     int incorrect = 0;
@@ -94,10 +82,11 @@ struct diy_float_t {
 
 template <arithmetic_float T>
 void process(const std::vector<T> &lines,
-             const std::array<BenchArgs<T>, Benchmarks::COUNT> &args, const std::span<std::string> filter = {}) {
+             const std::array<BenchArgs<T>, Benchmarks::COUNT> &args,
+             const std::vector<std::string> &algo_filter) {
   // We have a special algorithm for the string generation:
-  std::string just_string = "just_string";
-  if (is_matched(just_string, filter)) {
+  if (const std::string just_string = "just_string";
+      !algo_filtered_out(just_string, algo_filter)) {
     std::vector<diy_float_t> parsed;
     for(auto d : lines) {
       auto v = jkj::grisu_exact(d);
@@ -114,16 +103,17 @@ void process(const std::vector<T> &lines,
   } else {
     fmt::println("# skipping {}", just_string);
   }
+
   for (const auto &algo : args) {
     if (!algo.used) {
       fmt::println("# skipping {}", algo.name);
       continue;
     }
-    // Apply filter if provided
-    if (!is_matched(algo.name, filter)) {
+    if (algo_filtered_out(algo.name, algo_filter)) {
       fmt::println("# filtered out {}", algo.name);
       continue;
     }
+
     pretty_print(lines, algo.name, [&algo](const std::vector<T> &lines) -> int {
       int volume = 0;
       char buf[100];
@@ -133,14 +123,13 @@ void process(const std::vector<T> &lines,
       return volume;
     }, algo.testRepeat);
   }
-
 }
 
 template <typename T>
 std::vector<T> fileload(const std::string &filename) {
   std::ifstream inputfile(filename);
   if (!inputfile) {
-    fmt::print(stderr, "can't open {}\n", filename);
+    fmt::println(stderr, "can't open {}", filename);
     return {};
   }
 
@@ -151,7 +140,7 @@ std::vector<T> fileload(const std::string &filename) {
       lines.push_back(std::is_same_v<T, float> ? std::stof(line)
                                                : std::stod(line));
     } catch (...) {
-      fmt::print(stderr, "problem with {}\nWe expect floating-point numbers (one per line).\n", line);
+      fmt::println(stderr, "problem with {}\nWe expect floating-point numbers (one per line).", line);
       std::abort();
     }
   }
@@ -165,7 +154,7 @@ std::vector<T> get_random_numbers(size_t howmany,
   fmt::println("# parsing random numbers");
   std::vector<T> lines;
   auto g = get_generator_by_name<T>(random_model);
-  fmt::print("model: {}\nvolume: {} floats\n", g->describe(), howmany);
+  fmt::println("model: {}\nvolume: {} floats", g->describe(), howmany);
   lines.reserve(howmany); // let us reserve plenty of memory.
   for (size_t i = 0; i < howmany; i++) {
     const T line = g->new_float();
@@ -218,7 +207,8 @@ int main(int argc, char **argv) {
         numbers = get_random_numbers<float>(volume, model);
       else
         numbers = get_random_numbers<double>(volume, model);
-      fmt::println("# You can also provide a filename (with the -f flag): it should contain one string per line corresponding to a number");
+      fmt::println("# You can also provide a filename (with the -f flag):"
+                   "it should contain one string per line corresponding to a number");
     }
     else {
       if (single)

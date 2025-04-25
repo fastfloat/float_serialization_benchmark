@@ -15,6 +15,7 @@
 #include "algorithms.h"
 #include "cxxopts.hpp"
 #include "floatutils.h"
+#include "benchutil.h"
 
 struct test_case {
   double value;
@@ -57,27 +58,16 @@ void run_file_test(const std::string& filename, bool errol, const std::vector<st
 
   for (const auto &algo : args) {
     if (!algo.used) {
-      fmt::print("# skipping {}\n", algo.name);
+      fmt::println("# skipping {}", algo.name);
       continue;
     }
     if (algo.func == Benchmarks::dragonbox<double>) {
-      fmt::print("# skipping {} because it is the reference.\n", algo.name);
+      fmt::println("# skipping {} because it is the reference.", algo.name);
       continue;
     }
-
-    // Apply filter if provided
-    if (!algo_filter.empty()) {
-      bool matched = false;
-      for (const auto &f : algo_filter) {
-        if (algo.name.find(f) != std::string::npos) {
-          matched = true;
-          break;
-        }
-      }
-      if (!matched) {
-        fmt::print("# filtered out {}\n", algo.name);
-        continue;
-      }
+    if (algo_filtered_out(algo.name, algo_filter)) {
+      fmt::println("# filtered out {}", algo.name);
+      continue;
     }
 
     bool incorrect = false;
@@ -168,12 +158,12 @@ int main(int argc, char **argv) {
     const auto result = options.parse(argc, argv);
 
     if (result["help"].as<bool>()) {
-      fmt::print("{}\n", options.help());
+      fmt::println("{}", options.help());
       return EXIT_SUCCESS;
     }
     run_file_test(result["file"].as<std::string>(), result["errol"].as<bool>(), result["algorithm"].as<std::vector<std::string>>());
   } catch (const std::exception &e) {
-    fmt::print("error parsing options: {}\n", e.what());
+    fmt::println("error parsing options: {}", e.what());
     return EXIT_FAILURE;
   }
 }
