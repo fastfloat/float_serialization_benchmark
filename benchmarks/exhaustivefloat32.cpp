@@ -1,13 +1,6 @@
 #include <fmt/format.h>
 
-#include <array>
-#include <bit>
 #include <cctype>
-#include <cmath>
-#include <cstring>
-#include <iostream>
-#include <string_view>
-#include <charconv>
 #include <vector>
 
 #include "algorithms.h"
@@ -15,92 +8,19 @@
 #include "floatutils.h"
 #include "benchutil.h"
 
+using Benchmarks::BenchArgs;
+
 void run_exhaustive32(bool errol, const std::vector<std::string>& algo_filter = {}) {
-  fmt::println("{:20} {:20}", "Algorithm", "Valid shortest serialization");
+  static_assert(sizeof(float) == sizeof(uint32_t));
+  auto floats_view
+    = std::views::iota(uint32_t{0})
+    | std::views::take(1ULL << 32)
+    | std::views::transform([](uint32_t i) {
+        const float d = std::bit_cast<float>(i);
+        return TestCase<float>{ d, std::nullopt };
+      });
 
-  std::array<Benchmarks::BenchArgs<float>, Benchmarks::COUNT> args;
-  args = Benchmarks::initArgs<float>(errol);
-
-  for (const auto &algo : args) {
-    if (!algo.used) {
-      fmt::println("# skipping {}", algo.name);
-      continue;
-    }
-    if (algo.func == Benchmarks::dragonbox<float>) {
-      fmt::println("# skipping {} because it is the reference.", algo.name);
-      continue;
-    }
-    if (algo_filtered_out(algo.name, algo_filter)) {
-      fmt::println("# filtered out {}", algo.name);
-      continue;
-    }
-
-    bool incorrect = false;
-    char buf1[100], buf2[100];
-    std::span<char> bufRef(buf1, sizeof(buf1)), bufAlgo(buf2, sizeof(buf2));
-    fmt::print("# processing {}", algo.name);
-    fflush(stdout);
-    for (uint64_t i = 0; i < (1ULL << 32); ++i) {
-      if (i % 0x2000000 == 0) {
-        printf(".");
-        fflush(stdout);
-      }
-      static_assert(sizeof(float) == sizeof(uint32_t));
-      uint32_t i32(i);
-      float d;
-      std::memcpy(&d, &i32, sizeof(float));
-      if (std::isnan(d) || std::isinf(d))
-        continue;
-      // Reference output, we cannot use std::to_chars here, because it produces
-      // the shortest representation, which is not necessarily the same as the
-      // representation using the fewest significant digits.
-      // So we use dragonbox, which serves as the reference implementation.
-      const size_t vRef = Benchmarks::dragonbox(d, bufRef);
-      const size_t vAlgo = algo.func(d, bufAlgo);
-
-      std::string_view svRef{bufRef.data(), vRef};
-      std::string_view svAlgo{bufAlgo.data(), vAlgo};
-
-      auto countRef = count_significant_digits(svRef);
-      auto countAlgo = count_significant_digits(svAlgo);
-      auto backRef = parse_float<float>(svRef);
-      auto backAlgo = parse_float<float>(svAlgo);
-      if(!backRef || !backAlgo) {
-        incorrect = true;
-        fmt::print(" parse error: d = {}, bufRef = {}, bufAlgo = {}",
-                   float_to_hex<float>(d), svRef, svAlgo);
-        fflush(stdout);
-        break;
-      }
-      if(*backRef != d || *backAlgo != d) {
-        fmt::println("\n# Error: parsing the output with std::from_chars does not bring back the input.");
-      }
-      if(*backRef != d) {
-        incorrect = true;
-        fmt::print(" ref mismatch: d = {}, backRef = {}; svRef = {}, svAlgo = {}",
-                   float_to_hex<float>(d), *backRef, svRef, svAlgo);
-        fflush(stdout);
-        break;
-      }
-      if(*backAlgo != d) {
-        incorrect = true;
-        fmt::print(" algo mismatch: d = {}, backAlgo = {}; svRef = {}, svAlgo = {}, "
-                   "parsing the output with std::from_chars does not recover the original",
-                   float_to_hex<float>(d), *backAlgo, svRef, svAlgo);
-        fflush(stdout);
-        break;
-      }
-      if (countRef != countAlgo) {
-        incorrect = true;
-        fmt::print(" mismatch: d = {}, bufRef = {}, bufAlgo = {}",
-                   float_to_hex<float>(d), svRef, svAlgo);
-        fflush(stdout);
-        break;
-      }
-    }
-    fmt::print("\n");
-    fmt::println("{:20} {:20}", algo.name, incorrect == 0 ? "yes" : "no");
-  }
+  evaluate_properties_helper<float>(errol, algo_filter, floats_view);
 }
 
 cxxopts::Options

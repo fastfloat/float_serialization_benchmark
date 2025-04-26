@@ -1,14 +1,7 @@
 #include <fmt/format.h>
 
-#include <array>
-#include <bit>
 #include <cctype>
-#include <cmath>
-#include <cstring>
-#include <iostream>
 #include <string>
-#include <string_view>
-#include <charconv>
 #include <fstream>
 #include <vector>
 
@@ -17,26 +10,21 @@
 #include "floatutils.h"
 #include "benchutil.h"
 
-struct test_case {
-  double value;
-  std::string str_value;
-};
-
 // Helper function to load doubles from a file
-std::vector<test_case> load_doubles_from_file(const std::string& filename) {
-  std::vector<test_case> numbers;
+std::vector<TestCase<double>> load_doubles_from_file(const std::string& filename) {
+  std::vector<TestCase<double>> numbers;
   std::ifstream file(filename);
 
   if (!file.is_open()) {
-    fmt::print("Error: Could not open file {}\n", filename);
+    fmt::println("Error: Could not open file {}", filename);
     return numbers;
   }
 
   for (std::string line; std::getline(file, line);) {
     if (auto num = parse_float<double>(line))
-      numbers.emplace_back(*num,line);
+      numbers.emplace_back(*num, line);
     else
-      fmt::print("Warning: Could not parse '{}' as double, skipping\n", line);
+      fmt::println("Warning: Could not parse '{}' as double, skipping", line);
   }
 
   file.close();
@@ -44,97 +32,13 @@ std::vector<test_case> load_doubles_from_file(const std::string& filename) {
 }
 
 void run_file_test(const std::string& filename, bool errol, const std::vector<std::string>& algo_filter = {}) {
-  fmt::println("{:20} {:20}", "Algorithm", "Valid shortest serialization");
-
-  std::array<Benchmarks::BenchArgs<double>, Benchmarks::COUNT> args;
-  args = Benchmarks::initArgs<double>(errol);
-
-  // Load the doubles from file
-  auto test_values = load_doubles_from_file(filename);
+  const auto test_values = load_doubles_from_file(filename);
   if (test_values.empty()) {
-    fmt::print("No valid numbers to test\n");
+    fmt::println("No valid numbers to test");
     return;
   }
 
-  for (const auto &algo : args) {
-    if (!algo.used) {
-      fmt::println("# skipping {}", algo.name);
-      continue;
-    }
-    if (algo.func == Benchmarks::dragonbox<double>) {
-      fmt::println("# skipping {} because it is the reference.", algo.name);
-      continue;
-    }
-    if (algo_filtered_out(algo.name, algo_filter)) {
-      fmt::println("# filtered out {}", algo.name);
-      continue;
-    }
-
-    bool incorrect = false;
-    char buf1[100], buf2[100];
-    std::span<char> bufRef(buf1, sizeof(buf1)), bufAlgo(buf2, sizeof(buf2));
-    fmt::print("# processing {}", algo.name);
-    fflush(stdout);
-
-    size_t total = test_values.size();
-    for (size_t i = 0; i < total; ++i) {
-      if (i % (total/10) == 0 && total > 10) {
-        printf(".");
-        fflush(stdout);
-      }
-      double d = test_values[i].value;
-      const std::string& str_value = test_values[i].str_value;
-      if (std::isnan(d) || std::isinf(d))
-        continue;
-
-      const size_t vRef = Benchmarks::dragonbox(d, bufRef);
-      const size_t vAlgo = algo.func(d, bufAlgo);
-
-      std::string_view svRef{bufRef.data(), vRef};
-      std::string_view svAlgo{bufAlgo.data(), vAlgo};
-      //fmt::print(" RESULT {}: {} ", algo.name, svAlgo);
-
-      auto countRef = count_significant_digits(svRef);
-      auto countAlgo = count_significant_digits(svAlgo);
-      auto backRef = parse_float<double>(svRef);
-      auto backAlgo = parse_float<double>(svAlgo);
-
-      if(!backRef || !backAlgo) {
-        incorrect = true;
-        fmt::print(" parse error: case: {}; d = {}, bufRef = {}, bufAlgo = {}",
-                   str_value, float_to_hex<double>(d), svRef, svAlgo);
-        fflush(stdout);
-        break;
-      }
-      if(*backRef != d || *backAlgo != d) {
-        fmt::println("\n# Error: parsing the output with std::from_chars does not bring back the input.");
-      }
-      if(*backRef != d) {
-        incorrect = true;
-        fmt::print(" ref mismatch:case: {};  d = {}, backRef = {}; svRef = {}, svAlgo = {}",
-                   str_value, float_to_hex<double>(d), *backRef, svRef, svAlgo);
-        fflush(stdout);
-        break;
-      }
-      if(*backAlgo != d) {
-        incorrect = true;
-        fmt::print(" algo mismatch: case: {}; d = {}, backAlgo = {}; svRef = {}, svAlgo = {}, "
-                   "parsing the output with std::from_chars does not recover the original",
-                   str_value, float_to_hex<double>(d), *backAlgo, svRef, svAlgo);
-        fflush(stdout);
-        break;
-      }
-      if (countRef != countAlgo) {
-        incorrect = true;
-        fmt::print(" mismatch: case: {}; d = {}, bufRef = {}, bufAlgo = {}",
-                   str_value, float_to_hex<double>(d), svRef, svAlgo);
-        fflush(stdout);
-        break;
-      }
-    }
-    fmt::print("\n");
-    fmt::println("{:20} {:20}", algo.name, incorrect == 0 ? "yes" : "no");
-  }
+  evaluate_properties_helper<double>(errol, algo_filter, test_values);
 }
 
 cxxopts::Options
