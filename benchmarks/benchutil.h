@@ -7,6 +7,8 @@
 #include <cfloat>
 #include <cstdio>
 #include <ranges>
+#include <type_traits>
+#include <variant>
 
 #include "algorithms.h"
 #include "counters/event_counter.h"
@@ -91,7 +93,7 @@ void evaluate_properties_helper(Range&& cases,
       }
 
       const T d = tc.value;
-      const std::string sv = tc.str_value ? std::format("case: {};", *tc.str_value) : "";
+      const std::string sv = tc.str_value ? fmt::format("case: {};", *tc.str_value) : "";
 
       if (std::isnan(d) || std::isinf(d))
         continue;
