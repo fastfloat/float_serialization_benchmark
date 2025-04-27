@@ -73,7 +73,7 @@ struct BenchArgs {
   using Type = T;
 
   BenchArgs(const std::string& name = {}, int (*func)(T, std::span<char>&) = {},
-            bool used = true, unsigned char testRepeat = 100)
+            bool used = true, size_t testRepeat = 100)
       : name(name), func(func), used(used), testRepeat(testRepeat) {}
 
   std::string name{};

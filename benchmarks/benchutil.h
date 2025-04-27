@@ -6,17 +6,14 @@
 #include <atomic>
 #include <cfloat>
 #include <cstdio>
+#include <ranges>
 
 #include "algorithms.h"
 #include "counters/event_counter.h"
 
-event_collector collector;
+using Benchmarks::BenchArgs;
 
-template <arithmetic_float T>
-struct TestCase {
-  T value;
-  std::optional<std::string> str_value;
-};
+event_collector collector;
 
 bool algo_filtered_out(const std::string &algo_name,
                        const std::vector<std::string> &algo_filter) {
@@ -30,12 +27,32 @@ bool algo_filtered_out(const std::string &algo_name,
   return true;
 }
 
-template<arithmetic_float T, std::ranges::input_range Range>
-void evaluate_properties_helper(bool errol,
+template <arithmetic_float T>
+struct TestCase {
+  using Type = T;
+  T value;
+  std::optional<std::string> str_value;
+};
+
+template<typename E, typename T>
+concept TestCaseConcept = arithmetic_float<T> && requires(E e) {
+  { e.value } -> std::convertible_to<T>;
+  { e.str_value } -> std::convertible_to<std::optional<std::string>>;
+};
+
+template<typename R, typename T>
+concept TestCaseRange
+    = std::ranges::input_range<R>
+      && TestCaseConcept<std::ranges::range_reference_t<R>, T>;
+
+template<arithmetic_float T, typename Range> requires TestCaseRange<Range, T>
+void evaluate_properties_helper(Range&& cases,
                                 const std::vector<std::string> &algo_filter,
-                                Range&& cases) {
+                                std::variant<std::array<BenchArgs<T>, Benchmarks::COUNT>, bool> argsOpt) {
   fmt::println("{:20} {:20}", "Algorithm", "Valid shortest serialization");
-  const auto args = Benchmarks::initArgs<T>(errol);
+  const auto args = std::holds_alternative<bool>(argsOpt)
+                  ? Benchmarks::initArgs<T>(std::get<bool>(argsOpt))
+                  : std::get<std::array<BenchArgs<T>, Benchmarks::COUNT>>(argsOpt);
 
   // Get number of cases for progress display
   uint64_t total = 0;

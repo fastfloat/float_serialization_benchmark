@@ -28,48 +28,10 @@
 using Benchmarks::BenchArgs;
 
 template <arithmetic_float T>
-void evaluateProperties(const std::vector<T> &lines,
+void evaluateProperties(const std::vector<TestCase<T>> &lines,
                         const std::array<BenchArgs<T>, Benchmarks::COUNT> &args,
                         const std::vector<std::string> &algo_filter) {
-  fmt::println("{:20} {:20}", "Algorithm", "Valid round-trip");
-
-  for (const auto &algo : args) {
-    if (!algo.used) {
-      fmt::println("# skipping {}", algo.name);
-      continue;
-    }
-    if (algo_filtered_out(algo.name, algo_filter)) {
-      fmt::println("# filtered out {}", algo.name);
-      continue;
-    }
-
-    char buf1[100], buf2[100];
-    std::span<char> bufRef(buf1, sizeof(buf1)), bufAlgo(buf2, sizeof(buf2));
-    int incorrect = 0;
-    for (const auto d : lines) {
-      // Reference output
-      const int vRef = Benchmarks::std_to_chars(d, bufRef);
-      bufRef[vRef] = '\0';
-      T dRef;
-      // We prefer fast_float::from_chars over std::from_chars because it is more
-      // likely to be available.
-      auto [ptr, ec] = fast_float::from_chars(bufRef.data(), bufRef.data() + vRef, dRef);
-      assert(ptr == bufRef.data() + vRef);
-      assert(ec == std::errc());
-      assert(d == dRef);
-      // Tested algorithm output
-      const int vAlgo = algo.func(d, bufAlgo);
-      bufAlgo[vAlgo] = '\0';
-      T dAlgo;
-      auto [ptrAlgo, ecAlgo] = fast_float::from_chars(bufAlgo.data(), bufAlgo.data() + vAlgo, dAlgo);
-      assert(ptrAlgo == bufAlgo.data() + vAlgo);
-      assert(ecAlgo == std::errc());
-      if ((incorrect += (d != dAlgo)) == 1)
-        fmt::println("#\t{:20} mismatch: d = {:.17f}, bufRef = {}, bufAlgo = {}, dAlgo = {:.17f}",
-                     algo.name, d, bufRef.data(), bufAlgo.data(), dAlgo);
-    }
-    fmt::println("{:20} {:20}", algo.name, incorrect == 0 ? "yes" : "no");
-  }
+  evaluate_properties_helper<T>(lines, algo_filter, args);
 }
 
 struct diy_float_t {
@@ -81,15 +43,15 @@ struct diy_float_t {
 };
 
 template <arithmetic_float T>
-void process(const std::vector<T> &lines,
+void process(const std::vector<TestCase<T>> &lines,
              const std::array<BenchArgs<T>, Benchmarks::COUNT> &args,
              const std::vector<std::string> &algo_filter) {
   // We have a special algorithm for the string generation:
   if (const std::string just_string = "just_string";
       !algo_filtered_out(just_string, algo_filter)) {
     std::vector<diy_float_t> parsed;
-    for(auto d : lines) {
-      auto v = jkj::grisu_exact(d);
+    for(const auto d : lines) {
+      const auto v = jkj::grisu_exact(d.value);
       parsed.emplace_back(v.significand, v.exponent, v.is_negative);
     }
     pretty_print(parsed, just_string, [](const std::vector<diy_float_t>& parsed) -> int {
@@ -97,7 +59,7 @@ void process(const std::vector<T> &lines,
       char buf[100];
       std::span<char> bufspan(buf, sizeof(buf));
       for (const auto v : parsed)
-        volume +=  to_chars(v.significand, v.exponent, v.is_negative, bufspan.data());
+        volume += to_chars(v.significand, v.exponent, v.is_negative, bufspan.data());
       return volume;
     }, 100);
   } else {
@@ -114,31 +76,30 @@ void process(const std::vector<T> &lines,
       continue;
     }
 
-    pretty_print(lines, algo.name, [&algo](const std::vector<T> &lines) -> int {
+    pretty_print(lines, algo.name, [&algo](const std::vector<TestCase<T>> &lines) -> int {
       int volume = 0;
       char buf[100];
       std::span<char> bufspan(buf, sizeof(buf));
       for (const auto d : lines)
-        volume += algo.func(d, bufspan);
+        volume += algo.func(d.value, bufspan);
       return volume;
     }, algo.testRepeat);
   }
 }
 
-template <typename T>
-std::vector<T> fileload(const std::string &filename) {
+template <arithmetic_float T>
+std::vector<TestCase<T>> fileload(const std::string &filename) {
   std::ifstream inputfile(filename);
   if (!inputfile) {
     fmt::println(stderr, "can't open {}", filename);
     return {};
   }
 
-  std::vector<T> lines;
+  std::vector<TestCase<T>> lines;
   lines.reserve(10000); // let us reserve plenty of memory.
   for (std::string line; getline(inputfile, line);) {
     try {
-      lines.push_back(std::is_same_v<T, float> ? std::stof(line)
-                                               : std::stod(line));
+      lines.emplace_back(std::is_same_v<T, float> ? std::stof(line) : std::stod(line), line);
     } catch (...) {
       fmt::println(stderr, "problem with {}\nWe expect floating-point numbers (one per line).", line);
       std::abort();
@@ -148,17 +109,17 @@ std::vector<T> fileload(const std::string &filename) {
   return lines;
 }
 
-template <typename T>
-std::vector<T> get_random_numbers(size_t howmany,
-                                  const std::string &random_model) {
+template <arithmetic_float T>
+std::vector<TestCase<T>> get_random_numbers(size_t howmany,
+                                            const std::string &random_model) {
   fmt::println("# parsing random numbers");
-  std::vector<T> lines;
+  std::vector<TestCase<T>> lines;
   auto g = get_generator_by_name<T>(random_model);
   fmt::println("model: {}\nvolume: {} floats", g->describe(), howmany);
   lines.reserve(howmany); // let us reserve plenty of memory.
   for (size_t i = 0; i < howmany; i++) {
     const T line = g->new_float();
-    lines.push_back(line);
+    lines.emplace_back(line, std::nullopt);
   }
   return lines;
 }
@@ -183,7 +144,7 @@ int main(int argc, char **argv) {
         ("e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0).",
         cxxopts::value<bool>()->default_value("false"))
         ("a,algo-filter", "Filter algorithms by name substring: you can use multiple filters separated by commas.",
-        cxxopts::value<std::vector<std::string>>()->default_value(""))
+        cxxopts::value<std::vector<std::string>>())
         ("r,repeat", "Force a number of repetitions.",
         cxxopts::value<size_t>()->default_value("0"))
         ("h,help", "Print usage.");
@@ -195,10 +156,13 @@ int main(int argc, char **argv) {
     }
     const size_t repeat = result["repeat"].as<size_t>();
     const bool single = result["single"].as<bool>();
-    std::vector<std::string> filter = result["algo-filter"].as<std::vector<std::string>>();
+    const auto filter = result.count("algo-filter")
+                      ? result["algo-filter"].as<std::vector<std::string>>()
+                      : std::vector<std::string>{};
     fmt::println("number type: binary{}", (single ? "32 (float)" : "64 (double)"));
 
-    std::variant<std::vector<float>, std::vector<double>> numbers;
+    std::variant<std::vector<TestCase<float>>,
+                 std::vector<TestCase<double>>> numbers;
     const auto filename = result["file"].as<std::string>();
     if (filename.empty()) {
       const auto volume = result["volume"].as<size_t>();
@@ -207,7 +171,7 @@ int main(int argc, char **argv) {
         numbers = get_random_numbers<float>(volume, model);
       else
         numbers = get_random_numbers<double>(volume, model);
-      fmt::println("# You can also provide a filename (with the -f flag):"
+      fmt::println("# You can also provide a filename (with the -f flag): "
                    "it should contain one string per line corresponding to a number");
     }
     else {
@@ -234,8 +198,8 @@ int main(int argc, char **argv) {
     }
 
     const bool test = result["test"].as<bool>();
-    std::visit([test,&filter](const auto &lines, const auto &args) {
-      using T1 = typename std::decay_t<decltype(lines)>::value_type;
+    std::visit([test, &filter](const auto &lines, const auto &args) {
+      using T1 = typename std::decay_t<decltype(lines)>::value_type::Type;
       using T2 = typename std::decay_t<decltype(args)>::value_type::Type;
       if constexpr (std::is_same_v<T1, T2>) {
         if (test)

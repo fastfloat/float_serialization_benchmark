@@ -38,7 +38,7 @@ void run_file_test(const std::string& filename, bool errol, const std::vector<st
     return;
   }
 
-  evaluate_properties_helper<double>(errol, algo_filter, test_values);
+  evaluate_properties_helper<double>(test_values, algo_filter, errol);
 }
 
 cxxopts::Options

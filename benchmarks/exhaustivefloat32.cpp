@@ -20,7 +20,7 @@ void run_exhaustive32(bool errol, const std::vector<std::string>& algo_filter = 
         return TestCase<float>{ d, std::nullopt };
       });
 
-  evaluate_properties_helper<float>(errol, algo_filter, floats_view);
+  evaluate_properties_helper<float>(floats_view, algo_filter, errol);
 }
 
 cxxopts::Options
