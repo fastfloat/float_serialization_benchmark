@@ -225,8 +225,11 @@ int schubfach(T d, std::span<char>& buffer) {
 
 template<arithmetic_float T>
 int dragonbox(T d, std::span<char>& buffer) {
-  const char* end_ptr = jkj::dragonbox::to_chars(d, buffer.data());
-  return end_ptr - buffer.data();
+  // const char* end_ptr = jkj::dragonbox::to_chars(d, buffer.data());
+  // return end_ptr - buffer.data();
+
+  const auto v = jkj::dragonbox::to_decimal(d);
+  return to_chars(v.significand, v.exponent, v.is_negative, buffer.data());
 }
 
 template<arithmetic_float T>
