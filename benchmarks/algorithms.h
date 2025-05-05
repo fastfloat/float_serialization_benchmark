@@ -241,7 +241,15 @@ template<arithmetic_float T>
 int teju_jagua(T d, std::span<char>& buffer) {
   const auto fields = teju::traits_t<T>::teju(d);
   const bool sign = std::signbit(d);
-  return to_chars(fields.mantissa, fields.exponent, sign, buffer.data());
+  // return to_chars(fields.mantissa, fields.exponent, sign, buffer.data());
+
+  char* ptr = buffer.data();
+  if(sign) *ptr++ = '-';
+  using traits = jkj::dragonbox::default_float_traits<T>;
+  using carrier_uint = typename traits::carrier_uint;
+  const char* end = jkj::dragonbox::to_chars_detail::to_chars<T, traits>(
+      static_cast<carrier_uint>(fields.mantissa), fields.exponent, ptr);
+  return end - buffer.data();
 }
 
 template<arithmetic_float T>
