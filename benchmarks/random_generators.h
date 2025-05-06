@@ -33,8 +33,8 @@ template <typename T>
 struct integer_uniform_generator : float_number_generator<T> {
   std::random_device rd;
   std::mt19937_64 gen;
-  std::uniform_int_distribution<uint64_t> dis;
-  explicit integer_uniform_generator(uint64_t a = 0, uint64_t b = 1)
+  std::uniform_int_distribution<long> dis;
+  explicit integer_uniform_generator(long a = LONG_MIN, long b = LONG_MAX)
       : rd(), gen(rd()), dis(a, b) {}
   std::string describe() override {
     return std::string(

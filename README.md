@@ -92,6 +92,16 @@ cmake --build build --config Release
 ./build/benchmarks/thoroughfloat64
 ```
 
+## Fixed-point evaluation
+
+By default, we compare algorithms that output shortest string representation
+which can round-trip to the original floating-point value. We can also compare
+algorithms that output fixed-length representation of a given length:
+
+```
+./build/benchmarks/benchmark -f data/canada.txt -F [length]
+```
+
 ## Other existing benchmarks
 
 - [dtoa Benchmark](https://github.com/miloyip/dtoa-benchmark)
