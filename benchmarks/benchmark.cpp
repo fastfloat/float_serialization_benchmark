@@ -147,6 +147,8 @@ int main(int argc, char **argv) {
     options.add_options()
         ("f,file", "File name.",
         cxxopts::value<std::string>()->default_value(""))
+        ("F,fixed", "Fixed-point representation.",
+        cxxopts::value<size_t>()->default_value("0"))
         ("v,volume", "Volume (number of floats generated).",
         cxxopts::value<size_t>()->default_value("100000"))
         ("m,model", "Random Model.",
@@ -198,10 +200,11 @@ int main(int argc, char **argv) {
     std::variant<std::array<BenchArgs<float>, Benchmarks::COUNT>,
                  std::array<BenchArgs<double>, Benchmarks::COUNT>> algorithms;
     const bool errol = result["errol"].as<bool>();
+    const size_t fixed_size = result["fixed"].as<size_t>();
     if (single)
-      algorithms = Benchmarks::initArgs<float>(errol);
+      algorithms = Benchmarks::initArgs<float>(fixed_size, errol);
     else
-      algorithms = Benchmarks::initArgs<double>(errol);
+      algorithms = Benchmarks::initArgs<double>(fixed_size, errol);
 
     if(repeat > 0) {
       fmt::println("# forcing repeat count to {}", repeat);
@@ -233,6 +236,7 @@ int main(int argc, char **argv) {
     fmt::println("\nEXAMPLES:");
     fmt::println("  ./benchmark --single                    # Run benchmark with single precision (float)");
     fmt::println("  ./benchmark --file=data/canada.txt      # Run benchmark using numbers from a file");
+    fmt::println("  ./benchmark --fixed=10                  # Test fixed-point representation instead of shortest length");
     fmt::println("  ./benchmark --test                      # Test correctness instead of performance");
     fmt::println("  ./benchmark --volume=1000 --model=uniform # Generate 1000 uniform random numbers");
     fmt::println("  ./benchmark --algo-filter=ryu,grisu     # Only test algorithms containing 'ryu' or 'grisu'");
