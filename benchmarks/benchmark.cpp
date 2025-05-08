@@ -47,14 +47,13 @@ void process(const std::vector<TestCase<T>> &lines,
              const std::array<BenchArgs<T>, Benchmarks::COUNT> &args,
              const std::vector<std::string> &algo_filter) {
   // We have a special algorithm for the string generation:
-  if (const std::string just_string = "just_string";
-      !algo_filtered_out(just_string, algo_filter)) {
+  if (!algo_filtered_out("just_string", algo_filter)) {
     std::vector<diy_float_t> parsed;
     for(const auto d : lines) {
       const auto v = jkj::grisu_exact(d.value);
       parsed.emplace_back(v.significand, v.exponent, v.is_negative);
     }
-    pretty_print(parsed, just_string, [](const std::vector<diy_float_t>& parsed) -> int {
+    pretty_print(parsed, "just_string_ours", [](const std::vector<diy_float_t>& parsed) -> int {
       int volume = 0;
       char buf[100];
       std::span<char> bufspan(buf, sizeof(buf));
@@ -62,8 +61,23 @@ void process(const std::vector<TestCase<T>> &lines,
         volume += to_chars(v.significand, v.exponent, v.is_negative, bufspan.data());
       return volume;
     }, 100);
+    pretty_print(parsed, "just_string_dragonbox", [](const std::vector<diy_float_t>& parsed) -> int {
+      using traits = jkj::dragonbox::default_float_traits<T>;
+      using carrier_uint = typename traits::carrier_uint;
+      int volume = 0;
+      char buf[100];
+      std::span<char> bufspan(buf, sizeof(buf));
+      for (const auto v : parsed) {
+        char* ptr = bufspan.data();
+        if(v.is_negative) *ptr++ = '-';
+        const char* end = jkj::dragonbox::to_chars_detail::to_chars<T, traits>(
+            static_cast<carrier_uint>(v.significand), v.exponent, ptr);
+        volume += end - bufspan.data();
+      }
+      return volume;
+    }, 100);
   } else {
-    fmt::println("# skipping {}", just_string);
+    fmt::println("# skipping just_string");
   }
 
   for (const auto &algo : args) {
