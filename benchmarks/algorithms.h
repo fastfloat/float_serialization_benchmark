@@ -44,43 +44,23 @@
 #define YY_DOUBLE_SUPPORTED 0
 #endif
 
-namespace Benchmarks {
-
-enum Algorithm {
-  DRAGON4 = 0,
-  ERROL3 = 1,
-  TO_STRING = 2,
-  FMT_FORMAT = 3,
-  NETLIB = 4,
-  SNPRINTF = 5,
-  GRISU2 = 6,
-  GRISU_EXACT = 7,
-  SCHUBFACH = 8,
-  DRAGONBOX = 9,
-  RYU = 10,
-  TEJU_JAGUA = 11,
-  DOUBLE_CONVERSION = 12,
-  ABSEIL = 13,
-  STD_TO_CHARS = 14,
-  GRISU3 = 15,
-  SWIFT_DTOA = 16,
-  YY_DOUBLE = 17,
-  COUNT // Keep last
-};
-
 template<arithmetic_float T>
 struct BenchArgs {
   using Type = T;
+  using BenchFn = std::function<int(T, std::span<char>&, size_t fixed_size)>;
 
-  BenchArgs(const std::string& name = {}, int (*func)(T, std::span<char>&) = {},
-            bool used = true, size_t testRepeat = 100)
-      : name(name), func(func), used(used), testRepeat(testRepeat) {}
+  BenchArgs(const std::string& name = {}, BenchFn func = {}, bool used = true,
+            size_t testRepeat = 100, size_t fixedSize = 9)
+      : name(name), func(func), used(used), testRepeat(testRepeat), fixedSize(fixedSize) {}
 
   std::string name{};
-  int (*func)(T, std::span<char>&){};
+  BenchFn func{};
   bool used{};
   size_t testRepeat{100};
+  size_t fixedSize{9};
 };
+
+namespace BenchmarkShortest {
 
 template<arithmetic_float T>
 int dragon4(T d, std::span<char>& buffer) {
@@ -187,14 +167,6 @@ int netlib(T d, std::span<char>& buffer) {
 #endif
 }
 
-template<arithmetic_float T>
-int snprintf(T d, std::span<char>& buffer) {
-  if constexpr (std::is_same_v<T, float>)
-    return std::snprintf(buffer.data(), buffer.size(), "%.9g", d);
-  else
-    return std::snprintf(buffer.data(), buffer.size(), "%.17g", d);
-}
-
 // grisu2 is hardcoded for double.
 template<arithmetic_float T>
 int grisu2(T d, std::span<char>& buffer) {
@@ -285,19 +257,6 @@ int yy_double(T d, std::span<char>& buffer) {
 }
 
 template<arithmetic_float T>
-int abseil(T d, std::span<char>& buffer) {
-  // StrAppend is faster but only outputs 6 digits after the decimal point
-  // std::string s;
-  // absl::StrAppend(&s, d);
-  // std::copy(s.begin(), s.end(), buffer.begin());
-  // return size(s);
-  if constexpr (std::is_same_v<T, float>)
-    return absl::SNPrintF(buffer.data(), buffer.size(), "%.9g", d);
-  else
-    return absl::SNPrintF(buffer.data(), buffer.size(), "%.17g", d);
-}
-
-template<arithmetic_float T>
 int std_to_chars(T d, std::span<char>& buffer) {
 #if TO_CHARS_SUPPORTED
   const auto [p, ec]
@@ -313,34 +272,91 @@ int std_to_chars(T d, std::span<char>& buffer) {
 #endif
 }
 
-template <arithmetic_float T>
-std::array<BenchArgs<T>, Benchmarks::COUNT> initArgs(size_t fixed_size, bool use_errol = false) {
-  if (fixed_size == 0) {  // shortest length representation
-    std::array<BenchArgs<T>, Benchmarks::COUNT> args;
-    args[Benchmarks::DRAGON4]           = { "dragon4"           , Benchmarks::dragon4<T>           , true                          , 10 };
-    args[Benchmarks::ERROL3]            = { "errol3"            , Benchmarks::errol3<T>            , ERROL_SUPPORTED && use_errol };
-    args[Benchmarks::TO_STRING]         = { "std::to_string"    , Benchmarks::to_string<T>         , true };
-    args[Benchmarks::FMT_FORMAT]        = { "fmt::format"       , Benchmarks::fmt_format<T>        , true };
-    args[Benchmarks::NETLIB]            = { "netlib"            , Benchmarks::netlib<T>            , NETLIB_SUPPORTED  && std::is_same_v<T, double>, 10 };
-    args[Benchmarks::SNPRINTF]          = { "snprintf"          , Benchmarks::snprintf<T>          , true };
-    args[Benchmarks::GRISU2]            = { "grisu2"            , Benchmarks::grisu2<T>            , std::is_same_v<T, double> };
-    args[Benchmarks::GRISU_EXACT]       = { "grisu_exact"       , Benchmarks::grisu_exact<T>       , true };
-    args[Benchmarks::SCHUBFACH]         = { "schubfach"         , Benchmarks::schubfach<T>         , true };
-    args[Benchmarks::DRAGONBOX]         = { "dragonbox"         , Benchmarks::dragonbox<T>         , true };
-    args[Benchmarks::RYU]               = { "ryu"               , Benchmarks::ryu<T>               , true };
-    args[Benchmarks::TEJU_JAGUA]        = { "teju_jagua"        , Benchmarks::teju_jagua<T>        , true };
-    args[Benchmarks::DOUBLE_CONVERSION] = { "double_conversion" , Benchmarks::double_conversion<T> , true };
-    args[Benchmarks::ABSEIL]            = { "abseil"            , Benchmarks::abseil<T>            , ABSEIL_SUPPORTED };
-    args[Benchmarks::STD_TO_CHARS]      = { "std::to_chars"     , Benchmarks::std_to_chars<T>      , TO_CHARS_SUPPORTED };
-    args[Benchmarks::GRISU3]            = { "grisu3"            , Benchmarks::grisu3<T>            , std::is_same_v<T, double> };
-    args[Benchmarks::SWIFT_DTOA]        = { "SwiftDtoa"         , Benchmarks::swiftDtoa<T>         , SWIFT_LIB_SUPPORTED };
-    args[Benchmarks::YY_DOUBLE]         = { "yy_double"         , Benchmarks::yy_double<T>         , YY_DOUBLE_SUPPORTED && std::is_same_v<T, double> };
-    return args;
-  } else {  // fixed-length representation
-    throw std::runtime_error("fixed length representation not yet implemented");
-  }
-};
+}  // namespace BenchmarksShortest
 
-}  // namespace Benchmarks
+namespace BenchmarkFixedSize {
+
+template<arithmetic_float T>
+int abseil(T d, std::span<char>& buffer, size_t fixed_size) {
+  // StrAppend is faster but only outputs 6 digits after the decimal point
+  // std::string s;
+  // absl::StrAppend(&s, d);
+  // std::copy(s.begin(), s.end(), buffer.begin());
+  // return size(s);
+  if constexpr (std::is_same_v<T, float>)
+    return absl::SNPrintF(buffer.data(), buffer.size(), "%.9g", d);
+  else
+    return absl::SNPrintF(buffer.data(), buffer.size(), "%.17g", d);
+}
+
+template<arithmetic_float T>
+int snprintf(T d, std::span<char>& buffer, size_t fixed_size) {
+  if constexpr (std::is_same_v<T, float>)
+    return std::snprintf(buffer.data(), buffer.size(), "%.9g", d);
+  else
+    return std::snprintf(buffer.data(), buffer.size(), "%.17g", d);
+}
+
+}  // namespace BenchmarksShortest
+
+template <typename T>
+auto make_shortest_adapter(int (*fn)(T, std::span<char>&)) {
+  return [fn](T v, std::span<char>& buf, size_t /*fixed_size*/) -> int {
+    return fn(v, buf);
+  };
+}
+
+template <typename T>
+auto make_fixed_adapter(int (*fn)(T, std::span<char>&, size_t)) {
+  return [fn](T v, std::span<char>& buf, size_t fixed_size) -> int {
+    return fn(v, buf, fixed_size);
+  };
+}
+
+template <arithmetic_float T>
+std::vector<BenchArgs<T>> initArgs(bool use_errol = false, size_t repeat = 0, size_t fixed_size = 0) {
+  std::vector<BenchArgs<T>> args;
+  if (fixed_size == 0) {  // shortest-length representation
+    auto&& wrap = make_shortest_adapter<T>;
+    namespace s = BenchmarkShortest;
+    args.emplace_back("dragon4"           , wrap(s::dragon4<T>)           , true                                           , 10);
+    args.emplace_back("netlib"            , wrap(s::netlib<T>)            , NETLIB_SUPPORTED && std::is_same_v<T, double>  , 10);
+    args.emplace_back("errol3"            , wrap(s::errol3<T>)            , ERROL_SUPPORTED && use_errol);
+    args.emplace_back("fmt_format"        , wrap(s::fmt_format<T>)        , true);
+    args.emplace_back("grisu2"            , wrap(s::grisu2<T>)            , std::is_same_v<T, double>);
+    args.emplace_back("grisu3"            , wrap(s::grisu3<T>)            , std::is_same_v<T, double>);
+    args.emplace_back("grisu_exact"       , wrap(s::grisu_exact<T>)       , true);
+    args.emplace_back("schubfach"         , wrap(s::schubfach<T>)         , true);
+    args.emplace_back("dragonbox"         , wrap(s::dragonbox<T>)         , true);
+    args.emplace_back("ryu"               , wrap(s::ryu<T>)               , true);
+    args.emplace_back("teju_jagua"        , wrap(s::teju_jagua<T>)        , true);
+    args.emplace_back("double_conversion" , wrap(s::double_conversion<T>) , true);
+    args.emplace_back("swiftDtoa"         , wrap(s::swiftDtoa<T>)         , SWIFT_LIB_SUPPORTED);
+    args.emplace_back("yy_double"         , wrap(s::yy_double<T>)         , YY_DOUBLE_SUPPORTED && std::is_same_v<T, double>);
+    args.emplace_back("std::to_chars"     , wrap(s::std_to_chars<T>)      , TO_CHARS_SUPPORTED);
+
+    // to_string, snprintf and abseil do not support shortest-length representation
+  } else {  // fixed-length representation
+    auto&& wrap = make_fixed_adapter<T>;
+    namespace f = BenchmarkFixedSize;
+    args.emplace_back("snprintf" , wrap(f::snprintf<T>) , true);
+    args.emplace_back("abseil"   , wrap(f::abseil<T>)   , ABSEIL_SUPPORTED);
+
+    // to_string is hard-coded for 6 digits after the decimal point
+    // args.emplace_back("to_string", BenchmarkFixedSize::to_string<T>, true);
+
+    fmt::println("# testing fixed-size output to {} digits", fixed_size);
+    for (auto &arg : args)
+      arg.fixedSize = fixed_size;
+  }
+
+  if (repeat > 0) {
+      fmt::println("# forcing repeat count to {}", repeat);
+      for (auto &arg : args)
+          arg.testRepeat = repeat;
+  }
+
+  return args;
+};
 
 #endif

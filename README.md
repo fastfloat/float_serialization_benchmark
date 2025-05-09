@@ -102,6 +102,9 @@ algorithms that output fixed-length representation of a given length:
 ./build/benchmarks/benchmark -f data/canada.txt -F [length]
 ```
 
+Note that this only works when we are comparing speeds, not measuring properties
+of the algorithms, i.e., we can't use both `-F/--fixed` and `-t/--test` at the same time.
+
 ## Other existing benchmarks
 
 - [dtoa Benchmark](https://github.com/miloyip/dtoa-benchmark)
