@@ -13,8 +13,6 @@
 #include "algorithms.h"
 #include "counters/event_counter.h"
 
-using Benchmarks::BenchArgs;
-
 event_collector collector;
 
 bool algo_filtered_out(const std::string &algo_name,
@@ -50,11 +48,11 @@ concept TestCaseRange
 template<arithmetic_float T, typename Range> requires TestCaseRange<Range, T>
 void evaluate_properties_helper(Range&& cases,
                                 const std::vector<std::string> &algo_filter,
-                                std::variant<std::array<BenchArgs<T>, Benchmarks::COUNT>, bool> argsOpt) {
+                                std::variant<std::vector<BenchArgs<T>>, bool> argsOpt) {
   fmt::println("{:20} {:20}", "Algorithm", "Valid shortest serialization");
   const auto args = std::holds_alternative<bool>(argsOpt)
-                  ? Benchmarks::initArgs<T>(std::get<bool>(argsOpt))
-                  : std::get<std::array<BenchArgs<T>, Benchmarks::COUNT>>(argsOpt);
+                  ? initArgs<T>(std::get<bool>(argsOpt))
+                  : std::get<std::vector<BenchArgs<T>>>(argsOpt);
 
   // Get number of cases for progress display
   uint64_t total = 0;
@@ -69,7 +67,7 @@ void evaluate_properties_helper(Range&& cases,
       fmt::println("# skipping {}", algo.name);
       continue;
     }
-    if (algo.func == Benchmarks::dragonbox<T>) {
+    if (algo.name == "dragonbox") {
       fmt::println("# skipping {} because it is the reference.", algo.name);
       continue;
     }
@@ -102,8 +100,8 @@ void evaluate_properties_helper(Range&& cases,
       // the shortest representation, which is not necessarily the same as the
       // representation using the fewest significant digits.
       // So we use dragonbox, which serves as the reference implementation.
-      const size_t vRef  = Benchmarks::dragonbox(d, bufRef);
-      const size_t vAlgo = algo.func(d, bufAlgo);
+      const size_t vRef  = BenchmarkShortest::dragonbox(d, bufRef);
+      const size_t vAlgo = algo.func(d, bufAlgo, algo.fixedSize);
 
       std::string_view svRef{bufRef.data(), vRef},
                        svAlgo{bufAlgo.data(), vAlgo};

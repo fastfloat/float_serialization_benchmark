@@ -8,8 +8,6 @@
 #include "floatutils.h"
 #include "benchutil.h"
 
-using Benchmarks::BenchArgs;
-
 void run_exhaustive32(bool errol, const std::vector<std::string>& algo_filter = {}) {
   static_assert(sizeof(float) == sizeof(uint32_t));
   auto floats_view

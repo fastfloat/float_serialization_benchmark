@@ -25,11 +25,9 @@
 #include <fast_float/fast_float.h>
 #include <fmt/core.h>
 
-using Benchmarks::BenchArgs;
-
 template <arithmetic_float T>
 void evaluateProperties(const std::vector<TestCase<T>> &lines,
-                        const std::array<BenchArgs<T>, Benchmarks::COUNT> &args,
+                        const std::vector<BenchArgs<T>> &args,
                         const std::vector<std::string> &algo_filter) {
   evaluate_properties_helper<T>(lines, algo_filter, args);
 }
@@ -44,7 +42,7 @@ struct diy_float_t {
 
 template <arithmetic_float T>
 void process(const std::vector<TestCase<T>> &lines,
-             const std::array<BenchArgs<T>, Benchmarks::COUNT> &args,
+             const std::vector<BenchArgs<T>> &args,
              const std::vector<std::string> &algo_filter) {
   // We have a special algorithm for the string generation:
   if (!algo_filtered_out("just_string", algo_filter)) {
@@ -95,7 +93,7 @@ void process(const std::vector<TestCase<T>> &lines,
       char buf[100];
       std::span<char> bufspan(buf, sizeof(buf));
       for (const auto d : lines)
-        volume += algo.func(d.value, bufspan);
+        volume += algo.func(d.value, bufspan, algo.fixedSize);
       return volume;
     }, algo.testRepeat);
   }
@@ -170,7 +168,6 @@ int main(int argc, char **argv) {
       fmt::print("{}\n", options.help());
       return EXIT_SUCCESS;
     }
-    const size_t repeat = result["repeat"].as<size_t>();
     const bool single = result["single"].as<bool>();
     const auto filter = result.count("algo-filter")
                       ? result["algo-filter"].as<std::vector<std::string>>()
@@ -197,22 +194,14 @@ int main(int argc, char **argv) {
         numbers = fileload<double>(filename);
     }
 
-    std::variant<std::array<BenchArgs<float>, Benchmarks::COUNT>,
-                 std::array<BenchArgs<double>, Benchmarks::COUNT>> algorithms;
+    std::variant<std::vector<BenchArgs<float>>, std::vector<BenchArgs<double>>> algorithms;
     const bool errol = result["errol"].as<bool>();
+    const size_t repeat = result["repeat"].as<size_t>();
     const size_t fixed_size = result["fixed"].as<size_t>();
     if (single)
-      algorithms = Benchmarks::initArgs<float>(fixed_size, errol);
+      algorithms = initArgs<float>(errol, repeat, fixed_size);
     else
-      algorithms = Benchmarks::initArgs<double>(fixed_size, errol);
-
-    if(repeat > 0) {
-      fmt::println("# forcing repeat count to {}", repeat);
-      std::visit([repeat](auto &args) {
-        for (auto &arg : args)
-          arg.testRepeat = repeat;
-      }, algorithms);
-    }
+      algorithms = initArgs<double>(errol, repeat, fixed_size);
 
     const bool test = result["test"].as<bool>();
     std::visit([test, &filter](const auto &lines, const auto &args) {
