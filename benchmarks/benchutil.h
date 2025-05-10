@@ -101,7 +101,7 @@ void evaluate_properties_helper(Range&& cases,
       // representation using the fewest significant digits.
       // So we use dragonbox, which serves as the reference implementation.
       const size_t vRef  = BenchmarkShortest::dragonbox(d, bufRef);
-      const size_t vAlgo = algo.func(d, bufAlgo, algo.fixedSize);
+      const size_t vAlgo = algo.func(d, bufAlgo);
 
       std::string_view svRef{bufRef.data(), vRef},
                        svAlgo{bufAlgo.data(), vAlgo};

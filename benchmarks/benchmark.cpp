@@ -93,7 +93,7 @@ void process(const std::vector<TestCase<T>> &lines,
       char buf[100];
       std::span<char> bufspan(buf, sizeof(buf));
       for (const auto d : lines)
-        volume += algo.func(d.value, bufspan, algo.fixedSize);
+        volume += algo.func(d.value, bufspan);
       return volume;
     }, algo.testRepeat);
   }

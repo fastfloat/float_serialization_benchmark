@@ -92,14 +92,14 @@ cmake --build build --config Release
 ./build/benchmarks/thoroughfloat64
 ```
 
-## Fixed-point evaluation
+## Fixed-precision evaluation
 
-By default, we compare algorithms that output shortest string representation
+By default, we compare algorithms that output shortest-significand representation
 which can round-trip to the original floating-point value. We can also compare
-algorithms that output fixed-length representation of a given length:
+algorithms that output fixed-precision representation of a given precision:
 
 ```
-./build/benchmarks/benchmark -f data/canada.txt -F [length]
+./build/benchmarks/benchmark -f data/canada.txt -F [precision]
 ```
 
 Note that this only works when we are comparing speeds, not measuring properties
