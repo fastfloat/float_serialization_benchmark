@@ -217,6 +217,10 @@ int ryu(T d, std::span<char>& buffer) {
 
 template<arithmetic_float T>
 int teju_jagua(T d, std::span<char>& buffer) {
+  if(d == 0.0) {
+    std::copy_n("0E0", 3, buffer.data());
+    return 3;
+  }
   const auto fields = teju::traits_t<T>::teju(d);
   const bool sign = std::signbit(d);
   return to_chars(fields.mantissa, fields.exponent, sign, buffer.data());
