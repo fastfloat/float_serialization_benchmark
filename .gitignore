@@ -1,5 +1,8 @@
 build
 build_debug
 build_script
+outputs
+tags
 compile_commands.json
 .cache
+**/__pycache__
