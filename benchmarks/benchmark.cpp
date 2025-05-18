@@ -43,9 +43,10 @@ struct diy_float_t {
 template <arithmetic_float T>
 void process(const std::vector<TestCase<T>> &lines,
              const std::vector<BenchArgs<T>> &args,
-             const std::vector<std::string> &algo_filter) {
+             const std::vector<std::string> &algo_filter,
+             bool string_eval) {
   // We have a special algorithm for the string generation:
-  if (!algo_filtered_out("just_string", algo_filter)) {
+  if (string_eval && !algo_filtered_out("just_string", algo_filter)) {
     std::vector<diy_float_t> parsed;
     for(const auto d : lines) {
       const auto v = jkj::grisu_exact(d.value);
@@ -153,6 +154,8 @@ int main(int argc, char **argv) {
         cxxopts::value<std::string>()->default_value("uniform"))
         ("s,single", "Use single precision instead of double.",
         cxxopts::value<bool>()->default_value("false"))
+        ("S,string-eval", "Evaluate perf. of string generation from decimal mantissa/exponent",
+        cxxopts::value<bool>()->default_value("false"))
         ("t,test", "Test the algorithms and find their properties.",
         cxxopts::value<bool>()->default_value("false"))
         ("e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0).",
@@ -204,14 +207,15 @@ int main(int argc, char **argv) {
       algorithms = initArgs<double>(errol, repeat, fixed_size);
 
     const bool test = result["test"].as<bool>();
-    std::visit([test, &filter](const auto &lines, const auto &args) {
+    const bool string_eval = result["string-eval"].as<bool>();
+    std::visit([test, string_eval, &filter](const auto &lines, const auto &args) {
       using T1 = typename std::decay_t<decltype(lines)>::value_type::Type;
       using T2 = typename std::decay_t<decltype(args)>::value_type::Type;
       if constexpr (std::is_same_v<T1, T2>) {
         if (test)
           evaluateProperties(lines, args, filter);
         else
-          process(lines, args, filter);
+          process(lines, args, filter, string_eval);
       }
     }, numbers, algorithms);
   } catch (const std::exception &e) {
