@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <optional>
+#include <fast_float/fast_float.h>
 
 template<typename T>
 concept arithmetic_float
@@ -47,8 +48,9 @@ std::optional<T> parse_float(std::string_view sv) {
   T result;
   const char* begin = sv.data();
   const char* end = sv.data() + sv.size();
-
-  auto [ptr, ec] = std::from_chars(begin, end, result);
+  // Using fastfloat for parsing and not std::from_chars, since
+  // fastfloat is always available and supports both float and double.
+  auto [ptr, ec] = fast_float::from_chars(begin, end, result);
 
   // Check if parsing succeeded and consumed the entire string
   if (ec == std::errc{} && ptr == end) {
