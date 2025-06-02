@@ -44,6 +44,7 @@
 #define YY_DOUBLE_SUPPORTED 0
 #endif
 
+
 template<arithmetic_float T>
 struct BenchArgs {
   using Type = T;
@@ -57,14 +58,7 @@ struct BenchArgs {
   bool used{};
   size_t testRepeat{100};
 
-  static void initFixedSize(size_t size) {
-    fixedSize = size;
-    snprintf(formatStr, sizeof(formatStr), "%%.%zug", fixedSize);
-    formatStrStr = fmt::format("{{:.{}g}}", fixedSize);
-  }
   static inline size_t fixedSize;
-  static inline char formatStr[10];
-  static inline std::string formatStrStr;
 };
 
 namespace BenchmarkShortest {
@@ -321,21 +315,85 @@ int abseil(T d, std::span<char>& buffer) {
   // absl::StrAppend(&s, d);
   // std::copy(s.begin(), s.end(), buffer.begin());
   // return size(s);
-  return absl::SNPrintF(buffer.data(), buffer.size(),
-                        BenchArgs<T>::formatStr, d);
+  //
+  // The switch should be very cheap if fixedSize is very predictable.
+  // Essentially just a predictable jump.
+  switch (BenchArgs<T>::fixedSize) {
+    case 0: return absl::SNPrintF(buffer.data(), buffer.size(), "%.0g", d);
+    case 1: return absl::SNPrintF(buffer.data(), buffer.size(), "%.1g", d);
+    case 2: return absl::SNPrintF(buffer.data(), buffer.size(), "%.2g", d);
+    case 3: return absl::SNPrintF(buffer.data(), buffer.size(), "%.3g", d);
+    case 4: return absl::SNPrintF(buffer.data(), buffer.size(), "%.4g", d);
+    case 5: return absl::SNPrintF(buffer.data(), buffer.size(), "%.5g", d);
+    case 6: return absl::SNPrintF(buffer.data(), buffer.size(), "%.6g", d);
+    case 7: return absl::SNPrintF(buffer.data(), buffer.size(), "%.7g", d);
+    case 8: return absl::SNPrintF(buffer.data(), buffer.size(), "%.8g", d);
+    case 9: return absl::SNPrintF(buffer.data(), buffer.size(), "%.9g", d);
+    case 10: return absl::SNPrintF(buffer.data(), buffer.size(), "%.10g", d);
+    case 11: return absl::SNPrintF(buffer.data(), buffer.size(), "%.11g", d);
+    case 12: return absl::SNPrintF(buffer.data(), buffer.size(), "%.12g", d);
+    case 13: return absl::SNPrintF(buffer.data(), buffer.size(), "%.13g", d);
+    case 14: return absl::SNPrintF(buffer.data(), buffer.size(), "%.14g", d);
+    case 15: return absl::SNPrintF(buffer.data(), buffer.size(), "%.15g", d);
+    case 16: return absl::SNPrintF(buffer.data(), buffer.size(), "%.16g", d);
+    case 17: return absl::SNPrintF(buffer.data(), buffer.size(), "%.17g", d);
+    default:
+      return absl::SNPrintF(buffer.data(), buffer.size(), "%.17g", d);
+  }
 }
 
 template<arithmetic_float T>
 int snprintf(T d, std::span<char>& buffer) {
-  return std::snprintf(buffer.data(), buffer.size(),
-                       BenchArgs<T>::formatStr, d);
+  // The switch should be very cheap if fixedSize is very predictable.
+  // Essentially just a predictable jump.
+  switch (BenchArgs<T>::fixedSize) {
+    case 0: return std::snprintf(buffer.data(), buffer.size(), "%.0g", d);
+    case 1: return std::snprintf(buffer.data(), buffer.size(), "%.1g", d);
+    case 2: return std::snprintf(buffer.data(), buffer.size(), "%.2g", d);
+    case 3: return std::snprintf(buffer.data(), buffer.size(), "%.3g", d);
+    case 4: return std::snprintf(buffer.data(), buffer.size(), "%.4g", d);
+    case 5: return std::snprintf(buffer.data(), buffer.size(), "%.5g", d);
+    case 6: return std::snprintf(buffer.data(), buffer.size(), "%.6g", d);
+    case 7: return std::snprintf(buffer.data(), buffer.size(), "%.7g", d);
+    case 8: return std::snprintf(buffer.data(), buffer.size(), "%.8g", d);
+    case 9: return std::snprintf(buffer.data(), buffer.size(), "%.9g", d);
+    case 10: return std::snprintf(buffer.data(), buffer.size(), "%.10g", d);
+    case 11: return std::snprintf(buffer.data(), buffer.size(), "%.11g", d);
+    case 12: return std::snprintf(buffer.data(), buffer.size(), "%.12g", d);
+    case 13: return std::snprintf(buffer.data(), buffer.size(), "%.13g", d);
+    case 14: return std::snprintf(buffer.data(), buffer.size(), "%.14g", d);
+    case 15: return std::snprintf(buffer.data(), buffer.size(), "%.15g", d);
+    case 16: return std::snprintf(buffer.data(), buffer.size(), "%.16g", d);
+    case 17: return std::snprintf(buffer.data(), buffer.size(), "%.17g", d);
+    default:
+      return std::snprintf(buffer.data(), buffer.size(), "%.17g", d);
+  }
 }
 
 template<arithmetic_float T>
 int fmt_format(T d, std::span<char>& buffer) {
-  const auto it = fmt::format_to(buffer.begin(),
-                                 fmt::runtime(BenchArgs<T>::formatStrStr), d);
-  return std::distance(buffer.begin(), it);
+  switch(BenchArgs<T>::fixedSize) {
+    case 0: return fmt::format_to(buffer.data(), "{}", d) - buffer.data();
+    case 1: return fmt::format_to(buffer.data(), "{:.1g}", d) - buffer.data();
+    case 2: return fmt::format_to(buffer.data(), "{:.2g}", d) - buffer.data();
+    case 3: return fmt::format_to(buffer.data(), "{:.3g}", d) - buffer.data();
+    case 4: return fmt::format_to(buffer.data(), "{:.4g}", d) - buffer.data();
+    case 5: return fmt::format_to(buffer.data(), "{:.5g}", d) - buffer.data();
+    case 6: return fmt::format_to(buffer.data(), "{:.6g}", d) - buffer.data();
+    case 7: return fmt::format_to(buffer.data(), "{:.7g}", d) - buffer.data();
+    case 8: return fmt::format_to(buffer.data(), "{:.8g}", d) - buffer.data();
+    case 9: return fmt::format_to(buffer.data(), "{:.9g}", d) - buffer.data();
+    case 10: return fmt::format_to(buffer.data(), "{:.10g}", d) - buffer.data();
+    case 11: return fmt::format_to(buffer.data(), "{:.11g}", d) - buffer.data();
+    case 12: return fmt::format_to(buffer.data(), "{:.12g}", d) - buffer.data();
+    case 13: return fmt::format_to(buffer.data(), "{:.13g}", d) - buffer.data();
+    case 14: return fmt::format_to(buffer.data(), "{:.14g}", d) - buffer.data();
+    case 15: return fmt::format_to(buffer.data(), "{:.15g}", d) - buffer.data();
+    case 16: return fmt::format_to(buffer.data(), "{:.16g}", d) - buffer.data();
+    case 17: return fmt::format_to(buffer.data(), "{:.17g}", d) - buffer.data();
+    default:
+      return fmt::format_to(buffer.data(), "{:.17g}", d) - buffer.data();
+  }
 }
 
 template<arithmetic_float T>
@@ -407,7 +465,7 @@ std::vector<BenchArgs<T>> initArgs(bool use_errol = false, size_t repeat = 0, si
     // grisu2 does not round-trip correctly
   } else {  // fixed-length representation
     fmt::println("# testing fixed-size output to {} digits", fixed_size);
-    BenchArgs<T>::initFixedSize(fixed_size);
+    BenchArgs<T>::fixedSize = fixed_size;
 
     namespace f = BenchmarkFixedSize;
     args.emplace_back("dragon4"           , wrap(f::dragon4<T>)           , true                 , 10);
