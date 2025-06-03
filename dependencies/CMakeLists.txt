@@ -14,8 +14,8 @@ if (NOT CYGWIN)
     set(ABSL_USE_GOOGLETEST_HEAD OFF CACHE INTERNAL "")
 
     FetchContent_Declare(abseil
-         GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
-         GIT_TAG "d9e4955") # Abseil LTS branch, January 2025, Patch 1
+         URL https://github.com/abseil/abseil-cpp/archive/d9e4955.zip
+         URL_HASH SHA256=b8292600560c7562cd4e96ba397ee205c0450af352061d9303d1e20d15ef8b6b)
     FetchContent_GetProperties(abseil)
     if(NOT abseil_POPULATED)
         set(BUILD_TESTING OFF)
@@ -30,9 +30,8 @@ set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 FetchContent_Declare(
         doubleconversion
-        GIT_REPOSITORY https://github.com/google/double-conversion.git
-        GIT_TAG 101e1ba89dc41ceb75090831da97c43a76cd2906
-        # GIT_SHALLOW TRUE
+        URL https://github.com/google/double-conversion/archive/101e1ba89dc41ceb75090831da97c43a76cd2906.zip
+        URL_HASH SHA256=be99800f12675849023235c77058c3f272cb0222891c9ac17101c2fbeed00c24
 )
 FetchContent_MakeAvailable(doubleconversion)
 
@@ -60,7 +59,9 @@ FetchContent_Declare(
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(ryu)
+
 set(ryu_SOURCE_DIR ${ryu_SOURCE_DIR} PARENT_SCOPE)
+message(STATUS "ryu source directory: ${ryu_SOURCE_DIR}")
 
 FetchContent_Declare(
         grisu-exact
@@ -70,6 +71,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(grisu-exact)
 set(grisu-exact_SOURCE_DIR ${grisu-exact_SOURCE_DIR} PARENT_SCOPE)
+message(STATUS "grisu source directory: ${grisu-exact_SOURCE_DIR}")
 
 FetchContent_Declare(
         dragonbox
@@ -78,6 +80,7 @@ FetchContent_Declare(
         GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(dragonbox)
+message(STATUS "dragonbox source directory: ${dragonbox_SOURCE_DIR}")
 
 FetchContent_Declare(
         dragon4
@@ -90,12 +93,15 @@ if(NOT dragon4)
   FetchContent_Populate(dragon4)  # Downloads code to ${dragon4_SOURCE_DIR}
 endif()
 set(dragon4_SOURCE_DIR ${dragon4_SOURCE_DIR} PARENT_SCOPE)
+message(STATUS "dragon4 source directory: ${dragon4_SOURCE_DIR}")
+
 add_library(dragon4_lib STATIC
     ${dragon4_SOURCE_DIR}/Dragon4.cpp
     ${dragon4_SOURCE_DIR}/DragonMath.cpp
     ${dragon4_SOURCE_DIR}/PrintFloat.cpp
 )
 if(MATH_LIBRARY)
+    message(STATUS "Using math library")
     target_link_libraries(dragon4_lib PUBLIC ${MATH_LIBRARY})
 endif()
 target_include_directories(dragon4_lib PUBLIC
@@ -104,17 +110,19 @@ target_include_directories(dragon4_lib PUBLIC
 
 # Swift code may not build under Windows without extra care.
 if(NOT WIN32)
+        message(STATUS "Grabbing Swift code")
         FetchContent_Declare(
                 swift
-                GIT_REPOSITORY https://github.com/swiftlang/swift.git
-                GIT_TAG 6a862d2eb7128ff1f317b07e8ad1a6da939775f3
-                GIT_SHALLOW TRUE
+                URL https://github.com/swiftlang/swift/archive/6a862d2eb7128ff1f317b07e8ad1a6da939775f3.tar.gz
+                URL_HASH SHA256=281673f70a1695ce26f5463ac43842ffdb546d6d888338f488f71015564e51a0
         )
         FetchContent_GetProperties(swift)
         if(NOT swift)
                 FetchContent_Populate(swift)  # Downloads code to ${dragon4_SOURCE_DIR}
         endif()
         set(swift_SOURCE_DIR ${swift_SOURCE_DIR} PARENT_SCOPE)
+        message(STATUS "Swift directory: ${swift_SOURCE_DIR}")
+
         add_library(swift_lib STATIC
                 ${swift_SOURCE_DIR}/stdlib/public/runtime/SwiftDtoa.cpp
         )
@@ -128,15 +136,16 @@ endif(NOT WIN32)
 
 FetchContent_Declare(
         drachennest # for schubfach
-        GIT_REPOSITORY https://github.com/abolz/Drachennest.git
-        GIT_TAG e6714a39ad331b4489d0b6aaf3968635bff4eb5e
-        GIT_SHALLOW TRUE
+        URL https://github.com/abolz/Drachennest/archive/e6714a39ad331b4489d0b6aaf3968635bff4eb5e.zip
+        URL_HASH SHA256=6a5526d17b47c8e8c264133d717d99693f01783aa4a50e144d7a0e28363647bb
 )
 FetchContent_GetProperties(drachennest)
 if(NOT drachennest_POPULATED)
   FetchContent_Populate(drachennest)  # Downloads code to ${drachennest_SOURCE_DIR}
 endif()
 set(drachennest_SOURCE_DIR/src ${drachennest_SOURCE_DIR}/src PARENT_SCOPE)
+message(STATUS "drachennest directory: ${drachennest_SOURCE_DIR}")
+
 add_library(dragon_schubfach_lib STATIC
     ${drachennest_SOURCE_DIR}/src/dragon4.cc
     ${drachennest_SOURCE_DIR}/src/schubfach_32.cc
