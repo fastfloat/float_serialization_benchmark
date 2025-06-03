@@ -151,7 +151,7 @@ int main(int argc, char **argv) {
         ("v,volume", "Volume (number of floats generated).",
         cxxopts::value<size_t>()->default_value("100000"))
         ("m,model", "Random Model.",
-        cxxopts::value<std::string>()->default_value("uniform"))
+        cxxopts::value<std::string>()->default_value("uniform_01"))
         ("s,single", "Use single precision instead of double.",
         cxxopts::value<bool>()->default_value("false"))
         ("S,string-eval", "Evaluate perf. of string generation from decimal mantissa/exponent",
