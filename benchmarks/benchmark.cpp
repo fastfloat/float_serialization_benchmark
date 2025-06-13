@@ -152,7 +152,7 @@ bool is_exact_integer(float_type x) {
     return static_cast<float_type>(i) == x;
 }
 
-// Nouvelle version template de describe
+// New template version of describe
 template <typename T>
 void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestCase<double>>> &numbers, 
              const std::vector<BenchArgs<T>> &args,
@@ -166,6 +166,8 @@ void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestC
     }
     std::vector<size_t> sizes(lines.size(), std::numeric_limits<size_t>::max());
     std::vector<std::string> shortest(lines.size());
+    std::vector<size_t> min_digits(lines.size(), std::numeric_limits<size_t>::max());
+    std::vector<std::string> min_digits_str(lines.size());
     std::vector<std::tuple<std::string, size_t, double, bool>> results;
     size_t min_size = std::numeric_limits<size_t>::max();
     for (const auto &algo : args) {
@@ -182,6 +184,12 @@ void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestC
           sizes[i] = len;
           shortest[i].assign(bufspan.data(), len);
         }
+        // Check for minimal number of significant digits
+        size_t digits = count_significant_digits(std::string_view(bufspan.data(), len));
+        if (min_digits[i] > digits) {
+          min_digits[i] = digits;
+          min_digits_str[i].assign(bufspan.data(), len);
+        }
         total_size += len;
         std::string_view sv(buffer.data(), len);
         auto parsed = parse_float<T>(sv);
@@ -194,22 +202,25 @@ void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestC
       results.emplace_back(algo.name, total_size, avg, precise);
       if (precise && total_size < min_size) min_size = total_size;
     }
-    constexpr size_t warning_max = 1;
+    std::map<std::string, std::tuple<bool, bool>> algo_results;
     for (const auto &algo : args) {
       if (!algo.used) continue;
       if (algo_filtered_out(algo.name, algo_filter)) continue;
       size_t howmany = 0;
+      size_t howmany_digits = 0;
       std::vector<char> buffer(100);
       std::span<char> bufspan(buffer);
       size_t worse_than_shortest = 0;
+      size_t digits_worse_than_min = 0;
       for(size_t i = 0; i < lines.size(); ++i) {
         const auto &d = lines[i];
         int len = algo.func(d.value, bufspan);
+        // Case where the string is longer than the shortest
         if(sizes[i] < len) {
           howmany++;
           bool new_record = (len > worse_than_shortest + sizes[i]);
           worse_than_shortest = (std::max)(worse_than_shortest, len - sizes[i]);
-          if(new_record || howmany <= warning_max) {
+          if(new_record) {
             fmt::print(stderr, "Warning: algorithm {} produced a longer string ({}) than the shortest ({}) for value {}\n",
                        algo.name, len, sizes[i], d.value);
             fmt::print(stderr, "  Shortest: '{}'\n", shortest[i]);
@@ -223,18 +234,44 @@ void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestC
               fmt::print(stderr, "  BUG! Parsed values differ: {} vs {}\n",
                          parsed_ref.value(), parsed_this.value());
             }
+          }
+        }
+        // Case where the string has more significant digits than the minimum
+        size_t digits = count_significant_digits(std::string_view(bufspan.data(), len));
+        if(min_digits[i] < digits) {
 
+          bool new_record = (len > digits_worse_than_min + sizes[i]);
+          digits_worse_than_min = (std::max)(digits_worse_than_min, digits - min_digits[i]);
+          if(new_record) {
+            fmt::print(stderr, "Warning: algorithm {} produced a string with more significant digits ({}) than the minimum ({}) for value {}\n",
+                       algo.name, digits, min_digits[i], d.value);
+            fmt::print(stderr, "  Min digits: '{}'\n", min_digits_str[i]);
+            std::string_view this_answer(bufspan.data(), len);
+            fmt::print(stderr, "  Produced: '{}'\n", this_answer);
           }
         }
       }
-      if(howmany > warning_max) {
+      if(howmany > 0) {
         fmt::print(stderr, "Warning: algorithm {} produced longer strings than the shortest for {} values, worst gap is {} characters\n",
                    algo.name, howmany, worse_than_shortest);
       }
+      if(howmany_digits > 0) {
+        fmt::print(stderr, "Warning: algorithm {} produced more significant digits than the minimum for {} values, worst gap is {} digits\n",
+                   algo.name, howmany_digits, digits_worse_than_min);
+      }
+      if(howmany > 0 || howmany_digits > 0) {
+        fmt::println("---");
+      }
+      algo_results[algo.name] = std::make_tuple(howmany == 0, howmany_digits == 0);
+
     }
     for (const auto &[name, total_size, avg, precise] : results) {
-      bool is_min = (precise && total_size == min_size);
-      fmt::print("{:<18} {:>12} ({:>5.3f} chars/f){}{}\n", name, total_size, avg, is_min ? "[minimal]" : "", precise ? "[precise]" : " [imprecise]");
+      auto [is_shortest, is_min_digits_algo] = algo_results[name];
+      fmt::print("{:<18} {:>12} ({:>5.3f} chars/f) {:<18} {:<12} {:<15}\n",
+        name, total_size, avg,
+        is_shortest ? "[minimal string]" : "[non minimal]",
+        precise ? "[precise]" : "[imprecise]",
+        is_min_digits_algo ? "[min digits]" : "[non min digits]");
     }
     fmt::println("count: {}, 32-bit ints: {}, 64-bit ints: {}", lines.size(), integers32, integers64);
   }, numbers);
