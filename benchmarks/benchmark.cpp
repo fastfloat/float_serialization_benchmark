@@ -141,6 +141,105 @@ cxxopts::Options
     options("benchmark",
             "Compute the parsing speed of different number parsers.");
 
+
+// Checks if a floating-point number is exactly representable as the specified integer type
+template <std::integral int_type, std::floating_point float_type>
+bool is_exact_integer(float_type x) {
+    if (!std::isfinite(x)) {
+        return false;
+    }
+    int_type i = static_cast<int_type>(x);
+    return static_cast<float_type>(i) == x;
+}
+
+// Nouvelle version template de describe
+template <typename T>
+void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestCase<double>>> &numbers, 
+             const std::vector<BenchArgs<T>> &args,
+             const std::vector<std::string> &algo_filter) {
+  std::visit([&args, &algo_filter](const auto &lines) {
+    size_t integers64 = 0;
+    size_t integers32 = 0;
+    for (const auto &d : lines) {
+      integers64 += is_exact_integer<int64_t>(d.value) ? 1 : 0;
+      integers32 += is_exact_integer<int32_t>(d.value) ? 1 : 0;
+    }
+    std::vector<size_t> sizes(lines.size(), std::numeric_limits<size_t>::max());
+    std::vector<std::string> shortest(lines.size());
+    std::vector<std::tuple<std::string, size_t, double, bool>> results;
+    size_t min_size = std::numeric_limits<size_t>::max();
+    for (const auto &algo : args) {
+      if (!algo.used) continue;
+      if (algo_filtered_out(algo.name, algo_filter)) continue;
+      size_t total_size = 0;
+      std::vector<char> buffer(100);
+      std::span<char> bufspan(buffer);
+      bool precise = true;
+      for(size_t i = 0; i < lines.size(); ++i) {
+        const auto &d = lines[i];
+        int len = algo.func(d.value, bufspan);
+        if(sizes[i] > len) {
+          sizes[i] = len;
+          shortest[i].assign(bufspan.data(), len);
+        }
+        total_size += len;
+        std::string_view sv(buffer.data(), len);
+        auto parsed = parse_float<T>(sv);
+        if (!parsed.has_value() || parsed.value() != d.value) {
+          precise = false;
+          break;
+        }
+      }
+      double avg = total_size / double(lines.size());
+      results.emplace_back(algo.name, total_size, avg, precise);
+      if (precise && total_size < min_size) min_size = total_size;
+    }
+    constexpr size_t warning_max = 1;
+    for (const auto &algo : args) {
+      if (!algo.used) continue;
+      if (algo_filtered_out(algo.name, algo_filter)) continue;
+      size_t howmany = 0;
+      std::vector<char> buffer(100);
+      std::span<char> bufspan(buffer);
+      size_t worse_than_shortest = 0;
+      for(size_t i = 0; i < lines.size(); ++i) {
+        const auto &d = lines[i];
+        int len = algo.func(d.value, bufspan);
+        if(sizes[i] < len) {
+          howmany++;
+          bool new_record = (len > worse_than_shortest + sizes[i]);
+          worse_than_shortest = (std::max)(worse_than_shortest, len - sizes[i]);
+          if(new_record || howmany <= warning_max) {
+            fmt::print(stderr, "Warning: algorithm {} produced a longer string ({}) than the shortest ({}) for value {}\n",
+                       algo.name, len, sizes[i], d.value);
+            fmt::print(stderr, "  Shortest: '{}'\n", shortest[i]);
+            std::string_view this_answer(bufspan.data(), len);
+            fmt::print(stderr, "  Produced: '{}'\n", this_answer);
+            auto parsed_ref = parse_float<T>(shortest[i]);
+            auto parsed_this = parse_float<T>(this_answer);
+            if(!parsed_ref.has_value() || !parsed_this.has_value()) {
+              fmt::print(stderr, "  BUG! Parsing failed for one of the strings.\n");
+            } else if (parsed_ref.value() != parsed_this.value()) {
+              fmt::print(stderr, "  BUG! Parsed values differ: {} vs {}\n",
+                         parsed_ref.value(), parsed_this.value());
+            }
+
+          }
+        }
+      }
+      if(howmany > warning_max) {
+        fmt::print(stderr, "Warning: algorithm {} produced longer strings than the shortest for {} values, worst gap is {} characters\n",
+                   algo.name, howmany, worse_than_shortest);
+      }
+    }
+    for (const auto &[name, total_size, avg, precise] : results) {
+      bool is_min = (precise && total_size == min_size);
+      fmt::print("{:<18} {:>12} ({:>5.3f} chars/f){}{}\n", name, total_size, avg, is_min ? "[minimal]" : "", precise ? "[precise]" : " [imprecise]");
+    }
+    fmt::println("count: {}, 32-bit ints: {}, 64-bit ints: {}", lines.size(), integers32, integers64);
+  }, numbers);
+}
+
 int main(int argc, char **argv) {
   try {
     options.add_options()
@@ -148,6 +247,7 @@ int main(int argc, char **argv) {
         cxxopts::value<std::string>()->default_value(""))
         ("F,fixed", "Fixed-point representation.",
         cxxopts::value<size_t>()->default_value("0"))
+        ("D,data", "Description of the data.")
         ("v,volume", "Volume (number of floats generated).",
         cxxopts::value<size_t>()->default_value("100000"))
         ("m,model", "Random Model.",
@@ -205,7 +305,13 @@ int main(int argc, char **argv) {
       algorithms = initArgs<float>(errol, repeat, fixed_size);
     else
       algorithms = initArgs<double>(errol, repeat, fixed_size);
-
+    if (result["data"].as<bool>()) {
+      if (single)
+        describe<float>(numbers, std::get<std::vector<BenchArgs<float>>>(algorithms), filter);
+      else
+        describe<double>(numbers, std::get<std::vector<BenchArgs<double>>>(algorithms), filter);
+      return EXIT_SUCCESS;
+    }
     const bool test = result["test"].as<bool>();
     const bool string_eval = result["string-eval"].as<bool>();
     std::visit([test, string_eval, &filter](const auto &lines, const auto &args) {
