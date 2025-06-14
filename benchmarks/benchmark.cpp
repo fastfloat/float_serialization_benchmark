@@ -168,12 +168,14 @@ void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestC
     std::vector<std::string> shortest(lines.size());
     std::vector<size_t> min_digits(lines.size(), std::numeric_limits<size_t>::max());
     std::vector<std::string> min_digits_str(lines.size());
-    std::vector<std::tuple<std::string, size_t, double, bool>> results;
+    std::vector<std::tuple<std::string, size_t, double, size_t, double, bool>> results;
     size_t min_size = std::numeric_limits<size_t>::max();
     for (const auto &algo : args) {
       if (!algo.used) continue;
       if (algo_filtered_out(algo.name, algo_filter)) continue;
       size_t total_size = 0;
+      size_t total_digits = 0;
+
       std::vector<char> buffer(100);
       std::span<char> bufspan(buffer);
       bool precise = true;
@@ -191,6 +193,7 @@ void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestC
           min_digits_str[i].assign(bufspan.data(), len);
         }
         total_size += len;
+        total_digits += digits;
         std::string_view sv(buffer.data(), len);
         auto parsed = parse_float<T>(sv);
         if (!parsed.has_value() || parsed.value() != d.value) {
@@ -199,7 +202,9 @@ void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestC
         }
       }
       double avg = total_size / double(lines.size());
-      results.emplace_back(algo.name, total_size, avg, precise);
+      double avg_digits = total_digits / double(lines.size());
+
+      results.emplace_back(algo.name, total_size, avg, total_digits, avg_digits, precise);
       if (precise && total_size < min_size) min_size = total_size;
     }
     std::map<std::string, std::tuple<bool, bool>> algo_results;
@@ -265,10 +270,10 @@ void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestC
       algo_results[algo.name] = std::make_tuple(howmany == 0, howmany_digits == 0);
 
     }
-    for (const auto &[name, total_size, avg, precise] : results) {
+    for (const auto &[name, total_size, avg, total_digits, avg_digits, precise] : results) {
       auto [is_shortest, is_min_digits_algo] = algo_results[name];
-      fmt::print("{:<18} {:>12} ({:>5.3f} chars/f) {:<18} {:<12} {:<15}\n",
-        name, total_size, avg,
+      fmt::print("{:<18} {:>12} ({:>5.3f} chars/f) {:>12} ({:>5.3f} d/f) {:<18} {:<12} {:<15}\n",
+        name, total_size, avg, total_digits, avg_digits,
         is_shortest ? "[minimal string]" : "[non minimal]",
         precise ? "[precise]" : "[imprecise]",
         is_min_digits_algo ? "[min digits]" : "[non min digits]");
