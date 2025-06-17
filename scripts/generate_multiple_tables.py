@@ -14,13 +14,13 @@ input_files = [
 ]
 models = [
     'uniform_01',
-    'uniform_all',
-    'integer_uniform',
-    'centered',
-    'non_centered',
+    # 'logspace_all',
+    # 'integer_uniform',
+    # 'centered',
+    # 'non_centered',
 ]
-runs_r = 1_000
-volume_v = 1_000_000
+runs_r = 100
+volume_v = 100_000
 flag_combinations = [
     [],
     ['-F6'],

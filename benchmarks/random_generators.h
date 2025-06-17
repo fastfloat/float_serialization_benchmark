@@ -30,6 +30,24 @@ struct uniform_generator : float_number_generator<T> {
   T new_float() override { return dis(gen); }
 };
 
+template <typename T>
+struct logspace_generator : float_number_generator<T> {
+  std::random_device rd;
+  std::mt19937_64 gen;
+  std::uniform_int_distribution<int> exp;
+  std::uniform_real_distribution<T> significand;
+  explicit logspace_generator()
+      : rd(), gen(rd()),
+        exp(std::numeric_limits<T>::min_exponent + 1, // +1 skips subnormals
+            std::numeric_limits<T>::max_exponent),
+        significand(-1, 1) {}
+  std::string describe() override {
+    return "Generate random numbers uniformly in log2 space, i.e. "
+           "magnitudes uniformly distributed in the interval [-2^max_exponent, 2^max_exponent]";
+  }
+  T new_float() override { return significand(gen) * std::pow(2.0, exp(gen)); }
+};
+
 enum centering { centered, non_centered };
 template <std::floating_point T, centering C>
 struct centered_generator : float_number_generator<T> {
@@ -112,29 +130,26 @@ struct one_over_rand : float_number_generator<T> {
 };
 
 constexpr std::array<const char*, 8> model_names = {
-  "uniform_01"     , "uniform_all"  , "integer_uniform" ,
-  "centered"       , "non_centered" ,
-  "simple_uniform" , "simple_int"   ,
-  "one_over_rand"
+  "uniform_01"     , "logspace_all"    ,
+  "centered"       , "non_centered"    ,
+  "simple_uniform" , "simple_int"      ,
+  "one_over_rand"  , "integer_uniform" ,
 };
 
 template <typename T>
 inline std::unique_ptr<float_number_generator<T>>
-get_generator_by_name(std::string name) {
+get_generator_by_name(const std::string name) {
   std::cout << "available models (-m): ";
-  for (std::string name : model_names) {
-    std::cout << name << " ";
+  for (const auto& model : model_names) {
+    std::cout << model << " ";
   }
   std::cout << std::endl;
 
   // This is naive, but also not very important.
   if (name == "uniform_01")
     return std::unique_ptr<float_number_generator<T>>(new uniform_generator<T>());
-  if (name == "uniform_all") {
-    return std::unique_ptr<float_number_generator<T>>(
-        new uniform_generator<T>(std::numeric_limits<T>::lowest(),
-                                 std::numeric_limits<T>::max())
-    );
+  if (name == "logspace_all") {
+    return std::unique_ptr<float_number_generator<T>>(new logspace_generator<T>());
   }
   if (name == "centered")
     return std::unique_ptr<float_number_generator<T>>(new centered_generator<T, centered>());
