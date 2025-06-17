@@ -1,6 +1,7 @@
 build
 build_debug
 build_script
+.gdb_history
 outputs
 tags
 compile_commands.json

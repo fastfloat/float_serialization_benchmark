@@ -25,6 +25,10 @@
 #include <fast_float/fast_float.h>
 #include <fmt/core.h>
 
+cxxopts::Options
+    options("benchmark",
+            "Compute the parsing speed of different number parsers.");
+
 template <arithmetic_float T>
 void evaluateProperties(const std::vector<TestCase<T>> &lines,
                         const std::vector<BenchArgs<T>> &args,
@@ -137,11 +141,6 @@ std::vector<TestCase<T>> get_random_numbers(size_t howmany,
   return lines;
 }
 
-cxxopts::Options
-    options("benchmark",
-            "Compute the parsing speed of different number parsers.");
-
-
 // Checks if a floating-point number is exactly representable as the specified integer type
 template <std::integral int_type, std::floating_point float_type>
 bool is_exact_integer(float_type x) {
@@ -154,7 +153,7 @@ bool is_exact_integer(float_type x) {
 
 // New template version of describe
 template <typename T>
-void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestCase<double>>> &numbers, 
+void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestCase<double>>> &numbers,
              const std::vector<BenchArgs<T>> &args,
              const std::vector<std::string> &algo_filter) {
   std::visit([&args, &algo_filter](const auto &lines) {
@@ -286,34 +285,30 @@ int main(int argc, char **argv) {
   try {
     options.add_options()
         ("f,file", "File name.",
-        cxxopts::value<std::string>()->default_value(""))
+         cxxopts::value<std::string>()->default_value(""))
         ("F,fixed", "Fixed-point representation.",
-        cxxopts::value<size_t>()->default_value("0"))
-        ("D,data", "Description of the data.")
+         cxxopts::value<size_t>()->default_value("0"))
         ("v,volume", "Volume (number of floats generated).",
-        cxxopts::value<size_t>()->default_value("100000"))
+         cxxopts::value<size_t>()->default_value("100000"))
         ("m,model", "Random Model.",
-        cxxopts::value<std::string>()->default_value("uniform_01"))
-        ("s,single", "Use single precision instead of double.",
-        cxxopts::value<bool>()->default_value("false"))
-        ("S,string-eval", "Evaluate perf. of string generation from decimal mantissa/exponent",
-        cxxopts::value<bool>()->default_value("false"))
-        ("t,test", "Test the algorithms and find their properties.",
-        cxxopts::value<bool>()->default_value("false"))
-        ("e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0).",
-        cxxopts::value<bool>()->default_value("false"))
+         cxxopts::value<std::string>()->default_value("uniform_01"))
         ("a,algo-filter", "Filter algorithms by name substring: you can use multiple filters separated by commas.",
-        cxxopts::value<std::vector<std::string>>())
+         cxxopts::value<std::vector<std::string>>())
         ("r,repeat", "Force a number of repetitions.",
-        cxxopts::value<size_t>()->default_value("0"))
+         cxxopts::value<size_t>()->default_value("0"))
+        ("D,data", "Description of the data.")
+        ("s,single", "Use single precision instead of double.")
+        ("S,string-eval", "Evaluate perf. of string generation from decimal mantissa/exponent")
+        ("t,test", "Test the algorithms and find their properties.")
+        ("e,errol", "Enable errol3 (current impl. returns invalid values, e.g., for 0).")
         ("h,help", "Print usage.");
     const auto result = options.parse(argc, argv);
 
-    if (result["help"].as<bool>()) {
+    if (result.count("help") > 0) {
       fmt::print("{}\n", options.help());
       return EXIT_SUCCESS;
     }
-    const bool single = result["single"].as<bool>();
+    const bool single = result.count("single") > 0;
     const auto filter = result.count("algo-filter")
                       ? result["algo-filter"].as<std::vector<std::string>>()
                       : std::vector<std::string>{};
@@ -340,22 +335,23 @@ int main(int argc, char **argv) {
     }
 
     std::variant<std::vector<BenchArgs<float>>, std::vector<BenchArgs<double>>> algorithms;
-    const bool errol = result["errol"].as<bool>();
+    const bool errol = result.count("errol") > 0;
     const size_t repeat = result["repeat"].as<size_t>();
     const size_t fixed_size = result["fixed"].as<size_t>();
     if (single)
       algorithms = initArgs<float>(errol, repeat, fixed_size);
     else
       algorithms = initArgs<double>(errol, repeat, fixed_size);
-    if (result["data"].as<bool>()) {
+    if (result.count("data") > 0) {
       if (single)
         describe<float>(numbers, std::get<std::vector<BenchArgs<float>>>(algorithms), filter);
       else
         describe<double>(numbers, std::get<std::vector<BenchArgs<double>>>(algorithms), filter);
       return EXIT_SUCCESS;
     }
-    const bool test = result["test"].as<bool>();
-    const bool string_eval = result["string-eval"].as<bool>();
+
+    const bool test = result.count("test") > 0;
+    const bool string_eval = result.count("string-eval") > 0;
     std::visit([test, string_eval, &filter](const auto &lines, const auto &args) {
       using T1 = typename std::decay_t<decltype(lines)>::value_type::Type;
       using T2 = typename std::decay_t<decltype(args)>::value_type::Type;
