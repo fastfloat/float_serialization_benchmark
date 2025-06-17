@@ -375,7 +375,7 @@ int main(int argc, char **argv) {
     fmt::println("  ./benchmark --file=data/canada.txt      # Run benchmark using numbers from a file");
     fmt::println("  ./benchmark --fixed=10                  # Test fixed-point representation instead of shortest length");
     fmt::println("  ./benchmark --test                      # Test correctness instead of performance");
-    fmt::println("  ./benchmark --volume=1000 --model=uniform # Generate 1000 uniform random numbers");
+    fmt::println("  ./benchmark --volume=1000 --model=uniform_01 # Generate 1000 uniform random numbers in [0, 1]");
     fmt::println("  ./benchmark --algo-filter=ryu,grisu     # Only test algorithms containing 'ryu' or 'grisu'");
     fmt::println("\nFor full options list, run: ./benchmark --help");
     return EXIT_FAILURE;
