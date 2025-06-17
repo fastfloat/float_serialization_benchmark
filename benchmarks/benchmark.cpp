@@ -243,7 +243,7 @@ void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestC
         // Case where the string has more significant digits than the minimum
         size_t digits = count_significant_digits(std::string_view(bufspan.data(), len));
         if(min_digits[i] < digits) {
-
+          howmany_digits++;
           bool new_record = (len > digits_worse_than_min + sizes[i]);
           digits_worse_than_min = (std::max)(digits_worse_than_min, digits - min_digits[i]);
           if(new_record) {
