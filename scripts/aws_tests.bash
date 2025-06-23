@@ -21,12 +21,9 @@ VOLUME_SIZE=10 # in GB
 
 PROJECT_DIR=$(basename $(pwd))
 
-for INSTANCE_NAME in "${INSTANCES_x86_64[@]}" "${INSTANCES_aarch64[@]}"; do
-  if printf '%s\n' "${INSTANCES_aarch64[@]}" | grep -qx "${INSTANCE_NAME}"; then
-    AMI_ID=${AMI_ID_aarch64}
-  else
-    AMI_ID=${AMI_ID_x86_64}
-  fi
+process_instance() {
+  INSTANCE_NAME=$1
+  AMI_ID=$2
   echo "Running instance for ${INSTANCE_NAME} with AMI ${AMI_ID}"
 
   INSTANCE_ID=$(aws ec2 run-instances \
@@ -38,6 +35,7 @@ for INSTANCE_NAME in "${INSTANCES_x86_64[@]}" "${INSTANCES_aarch64[@]}"; do
     --security-group-ids ${SECURITY_GROUP} \
     --count "1" --query 'Instances[0].InstanceId' --output text)
 
+  echo "Waiting for instance ${INSTANCE_ID} to be ready..."
   aws ec2 wait instance-status-ok --instance-ids ${INSTANCE_ID}
   echo "Started instance: ${INSTANCE_ID}"
 
@@ -45,10 +43,10 @@ for INSTANCE_NAME in "${INSTANCES_x86_64[@]}" "${INSTANCES_aarch64[@]}"; do
     --instance-ids ${INSTANCE_ID} \
     --query "Reservations[0].Instances[0].PublicIpAddress" \
     --output text)
-  echo "Instance public IP: ${PUBLIC_IP}"
+  echo "Instance ${INSTANCE_ID} public IP: ${PUBLIC_IP}"
 
   rsync -avz --partial --progress --exclude ".git" --exclude "build" -e "${SSH_COMMAND}" \
-    ${PROJECT_DIR}/ ubuntu@${PUBLIC_IP}:~/${PROJECT_DIR}
+    ./ ubuntu@${PUBLIC_IP}:~/${PROJECT_DIR}
   ${SSH_COMMAND} ubuntu@${PUBLIC_IP} << 'EOF'
     set -e # Exit on error
 
@@ -63,11 +61,26 @@ for INSTANCE_NAME in "${INSTANCES_x86_64[@]}" "${INSTANCES_aarch64[@]}"; do
     ./scripts/generate_multiple_tables.py
 EOF
 
-  echo "Script executed successfully"
+  echo "Script executed successfully on ${INSTANCE_NAME}"
   mkdir -p "${PROJECT_DIR}/outputs/${INSTANCE_NAME}"
   rsync -avz --partial --progress -e "${SSH_COMMAND}" \
-    ubuntu@${PUBLIC_IP}:~/${PROJECT_DIR}/outputs/ ${PROJECT_DIR}/outputs/${INSTANCE_NAME}/
+    ubuntu@${PUBLIC_IP}:~/${PROJECT_DIR}/outputs/ ./outputs/${INSTANCE_NAME}/
 
   aws ec2 terminate-instances --instance-ids ${INSTANCE_ID}
   echo "Terminated instance: ${INSTANCE_ID}"
+}
+
+echo "Launching ${#INSTANCES_aarch64[@]} aarch64 instances and ${#INSTANCES_x86_64[@]} x86_64 instances in parallel..."
+for INSTANCE_NAME in "${INSTANCES_x86_64[@]}" "${INSTANCES_aarch64[@]}"; do
+  if printf '%s\n' "${INSTANCES_aarch64[@]}" | grep -qx "${INSTANCE_NAME}"; then
+    AMI_ID=${AMI_ID_aarch64}
+  else
+    AMI_ID=${AMI_ID_x86_64}
+  fi
+
+  process_instance "${INSTANCE_NAME}" "${AMI_ID}" 2>&1 | tee "${INSTANCE_NAME}.log" &
 done
+
+# Wait for all background jobs to finish
+wait
+echo "All instances completed."
