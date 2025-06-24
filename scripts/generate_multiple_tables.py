@@ -6,7 +6,6 @@ from latex_table import generate_latex_table
 
 # Configuration
 benchmark_executable = './build/benchmarks/benchmark'
-latex_script = './scripts/latex_table.py'
 output_dir = './outputs'
 input_files = [
     'data/canada.txt',
@@ -60,7 +59,7 @@ def run_cmd(cmd):
 def process_job(label, cmd_args, flags):
     # Run the benchmark
     cmd = [benchmark_executable] + cmd_args + flags
-    print(f"Running: {' '.join(cmd)}")
+    print(f"Running: {' '.join(cmd)}", flush=True)
     output = run_cmd(cmd)
 
     # Build output file name
@@ -73,7 +72,7 @@ def process_job(label, cmd_args, flags):
     tex_content = generate_latex_table(output)
     with open(out_path, 'w') as f:
         f.write(tex_content)
-    print(f"Written: {out_path}\n")
+    print(f"Written: {out_path}\n", flush=True)
 
 
 if __name__ == '__main__':

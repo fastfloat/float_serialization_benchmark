@@ -47,17 +47,19 @@ process_instance() {
 
   rsync -avz --partial --progress --exclude ".git" --exclude "build" -e "${SSH_COMMAND}" \
     ./ ubuntu@${PUBLIC_IP}:~/${PROJECT_DIR}
-  ${SSH_COMMAND} ubuntu@${PUBLIC_IP} << 'EOF'
+  ${SSH_COMMAND} ubuntu@${PUBLIC_IP} << EOF
     set -e # Exit on error
 
-    # Install dependencies
+    echo "Updating and installing dependencies on ${INSTANCE_NAME}..."
     sudo apt update
-    sudo apt install -y linux-tools-common linux-tools-generic g++ cmake
+    sudo DEBIAN_FRONTEND=noninteractive \
+         apt install -y linux-tools-common linux-tools-generic g++ cmake python3
 
-    # Build the project
+    echo "Building project..."
+    cd ~/${PROJECT_DIR}
     cmake -B build . && cmake --build build
 
-    # Run the script to generate multiple tables
+    echo "Running the python script to generate tests..."
     ./scripts/generate_multiple_tables.py
 EOF
 
