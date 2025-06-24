@@ -2,6 +2,7 @@
 import subprocess
 import os
 import platform
+import sys
 from latex_table import generate_latex_table
 
 # Configuration
@@ -26,6 +27,12 @@ flag_combinations = [
     ['-s'],
     ['-F6', '-s'],
 ]
+
+# Get compiler label from command line
+if len(sys.argv) < 2:
+    print("Usage: ./scripts/generate_multiple_tables.py <compiler_name>")
+    sys.exit(1)
+CompilerLabel = sys.argv[1]
 
 
 def get_cpu_model():
@@ -71,7 +78,7 @@ def process_job(label, cmd_args, flags):
     # Build output file name
     flag_label = ''.join([f.strip('-') for f in flags]) or 'none'
     safe_label = label.replace('.', '_')
-    filename = f"{CPUModel}_{safe_label}_{flag_label}.tex"
+    filename = f"{CPUModel}_{CompilerLabel}_{safe_label}_{flag_label}.tex"
     out_path = os.path.join(output_dir, filename)
 
     # Write to file

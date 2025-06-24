@@ -49,19 +49,25 @@ process_instance() {
     ./ ubuntu@${PUBLIC_IP}:~/${PROJECT_DIR}
   ${SSH_COMMAND} ubuntu@${PUBLIC_IP} << EOF
     set -e # Exit on error
+    cd ~/${PROJECT_DIR}
 
     echo "Updating and installing dependencies on ${INSTANCE_NAME}..."
     sudo apt update
     sudo DEBIAN_FRONTEND=noninteractive \
-         apt install -y linux-tools-common linux-tools-generic g++ cmake python3
-
-    echo "Building project..."
-    cd ~/${PROJECT_DIR}
-    cmake -B build . && cmake --build build
-
-    echo "Running the python script to generate tests..."
+         apt install -y linux-tools-common linux-tools-generic \
+                        g++ clang cmake python3
     echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
-    ./scripts/generate_multiple_tables.py
+
+
+    echo "Building project with g++ and running the benchmarks..."
+    CXX=g++ cmake -B build . && cmake --build build
+    ./scripts/generate_multiple_tables.py g++
+
+    rm -rf build
+
+    echo "Building project with clang++ and running the benchmarks..."
+    CXX=clang++ cmake -B build . && cmake --build build
+    ./scripts/generate_multiple_tables.py clang++
 EOF
 
   echo "Script executed successfully on ${INSTANCE_NAME}"
