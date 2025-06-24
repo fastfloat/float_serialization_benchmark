@@ -58,6 +58,11 @@ process_instance() {
                         g++ clang cmake python3
     echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
 
+    echo "Saving some info about the environment..."
+    mkdir -p outputs
+    lscpu > outputs/lscpu.txt
+    g++ --version > outputs/g++.txt
+    clang++ --version > outputs/clang++.txt
 
     echo "Building project with g++ and running the benchmarks..."
     CXX=g++ cmake -B build . && cmake --build build
