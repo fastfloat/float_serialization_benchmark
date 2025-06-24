@@ -154,8 +154,14 @@ bool is_exact_integer(float_type x) {
 // New template version of describe
 template <typename T>
 void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestCase<double>>> &numbers,
-             const std::vector<BenchArgs<T>> &args,
+             std::vector<BenchArgs<T>> args,
              const std::vector<std::string> &algo_filter) {
+              if constexpr (std::is_same_v<T, float>) {
+                args.push_back(get_std_to_chars_shorter<float>());
+              } else if constexpr (std::is_same_v<T, double>) {
+                args.push_back(get_std_to_chars_shorter<double>());
+              }
+
   std::visit([&args, &algo_filter](const auto &lines) {
     size_t integers64 = 0;
     size_t integers32 = 0;
