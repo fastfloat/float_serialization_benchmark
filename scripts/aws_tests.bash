@@ -45,7 +45,7 @@ process_instance() {
     --output text)
   echo "Instance ${INSTANCE_ID} public IP: ${PUBLIC_IP}"
 
-  rsync -avz --partial --progress --exclude ".git" --exclude "build" -e "${SSH_COMMAND}" \
+  git ls-files -z | rsync -avz --partial --progress --from0 --files-from=- -e "${SSH_COMMAND}" \
     ./ ubuntu@${PUBLIC_IP}:~/${PROJECT_DIR}
   ${SSH_COMMAND} ubuntu@${PUBLIC_IP} << EOF
     set -e # Exit on error
@@ -60,6 +60,7 @@ process_instance() {
     cmake -B build . && cmake --build build
 
     echo "Running the python script to generate tests..."
+    echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid
     ./scripts/generate_multiple_tables.py
 EOF
 
