@@ -63,6 +63,126 @@ struct BenchArgs {
 
 namespace BenchmarkShortest {
 
+
+/**
+ * We have that std::to_chars does not produce the shortest
+ * representation for numbers in scientific notation, so we
+ * optimize the string representation to be shorter.
+ */
+inline std::string optimize_number_string(const std::string &input) {
+  // Check if input contains 'E' or 'e' for scientific notation
+  auto e_pos = input.find_first_of("Ee");
+  if (e_pos != std::string::npos) {
+    // Handle scientific notation
+    std::string mantissa = input.substr(0, e_pos);
+    std::string exponent = input.substr(e_pos + 1);
+
+    // Remove leading zeros in exponent, preserving sign
+    bool negative = exponent[0] == '-';
+    exponent.erase(0, negative ? 1 : 0);
+    exponent.erase(0, exponent.find_first_not_of('0'));
+    if (exponent.empty())
+      exponent = "0";
+    if (negative && exponent != "0")
+      exponent = "-" + exponent;
+
+    // Reconstruct the number
+    return mantissa + "E" + exponent;
+  }
+
+  // Handle non-scientific notation
+  if (input == "0" || input == "-0")
+    return input;
+
+  // Determine sign
+  bool is_negative = input[0] == '-';
+  std::string num = is_negative ? input.substr(1) : input;
+
+  // Find first and last significant digits
+  std::string digits = num;
+  size_t decimal_pos = digits.find('.');
+  if (decimal_pos != std::string::npos) {
+    digits.erase(decimal_pos, 1); // Remove decimal point
+  }
+  size_t first_non_zero = digits.find_first_not_of('0');
+  size_t last_non_zero = digits.find_last_not_of('0');
+  digits = digits.substr(first_non_zero, last_non_zero - first_non_zero + 1);
+  // Count significant digits
+  size_t num_digits = digits.length();
+  if (num_digits == 0)
+    return input;
+  // Calculate exponent
+  size_t input_decimal_pos = input.find('.');
+  size_t input_first_non_zero = input.find_first_not_of('0');
+  size_t input_last_non_zero = input.find_last_not_of('0');
+
+  int exponent = 0;
+  if (input_decimal_pos == std::string::npos) {
+    // we have 123232900000
+    exponent = (input_last_non_zero - input_first_non_zero);
+  } else if (input_last_non_zero < input_decimal_pos) {
+    // Number like 123.456 or 0.456
+    exponent = (input_decimal_pos - input_first_non_zero - 1);
+  } else {
+    // Number like 0.000123
+    exponent =
+        -static_cast<int>(input.find_first_not_of('0', input_decimal_pos + 1) -
+                          input_decimal_pos);
+  }
+  // Calculate scientific notation length
+  size_t mantissa_len =
+      num_digits + (num_digits > 1 ? 1 : 0); // Digits + optional decimal
+  size_t exponent_len = (exponent == 0) ? 1
+                                        : (exponent < 0 ? 1 : 0) +
+                                              (std::abs(exponent) < 10    ? 1
+                                               : std::abs(exponent) < 100 ? 2
+                                                                          : 3);
+  size_t sci_len = mantissa_len + 1 + exponent_len +
+                   (is_negative ? 1 : 0); // Mantissa + E + exponent + sign
+
+  // Compare lengths
+  if (sci_len >= input.length())
+    return input;
+
+  // Construct scientific notation
+  std::string result;
+  if (is_negative)
+    result += "-";
+  result += digits[0];
+  if (num_digits > 1) {
+    result += ".";
+    result += digits.substr(1);
+  }
+  result += "e";
+  result += std::to_string(exponent);
+
+  return result;
+}
+
+/**
+  * This is a special version of std::to_chars that produces the shortest
+  * representation for numbers. It should not be used for benchmarking.
+ */
+template<arithmetic_float T>
+int std_to_chars_shorter(T d, std::span<char>& buffer) {
+#if TO_CHARS_SUPPORTED
+  const auto [p, ec]
+      = std::to_chars(buffer.data(), buffer.data() + buffer.size(), d);
+  if (ec != std::errc()) {
+    std::cerr << "problem with " << d << std::endl;
+    std::abort();
+  }
+  // This is ridiculous, optimize:
+  std::string result(buffer.data(), p - buffer.data());
+  result = optimize_number_string(result);
+  std::memcpy(buffer.data(), result.data(), result.size());
+  return result.size();
+#else
+  std::cerr << "std::to_chars not supported" << std::endl;
+  std::abort();
+#endif
+}
+
 template<arithmetic_float T>
 int dragon4(T d, std::span<char>& buffer) {
   if constexpr (std::is_same_v<T, float>)
@@ -432,6 +552,7 @@ int std_to_chars(T d, std::span<char>& buffer) {
 #endif
 }
 
+
 }  // namespace BenchmarksShortest
 
 template <typename T>
@@ -439,6 +560,16 @@ auto wrap(int (*fn)(T, std::span<char>&)) {
   return [fn](T v, std::span<char>& buf) -> int {
     return fn(v, buf);
   };
+}
+
+// Experimental: shorter representation for std::to_chars
+// This is not a benchmark, but a utility function to produce the shortest
+// representation of a floating-point number using std::to_chars.
+// It is not used in the benchmarks, but can be useful for other purposes.
+// It is not optimized for performance, but for producing the shortest string.
+template <arithmetic_float T>
+BenchArgs<T> get_std_to_chars_shorter() {
+  return BenchArgs<T>("std_to_chars_short", wrap(BenchmarkShortest::std_to_chars_shorter<T>), TO_CHARS_SUPPORTED);
 }
 
 template <arithmetic_float T>
