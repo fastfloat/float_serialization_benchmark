@@ -76,7 +76,7 @@ process_instance() {
 EOF
 
   echo "Script executed successfully on ${INSTANCE_NAME}"
-  mkdir -p "${PROJECT_DIR}/outputs/${INSTANCE_NAME}"
+  mkdir -p "./outputs/${INSTANCE_NAME}"
   rsync -avz --partial --progress -e "${SSH_COMMAND}" \
     ubuntu@${PUBLIC_IP}:~/${PROJECT_DIR}/outputs/ ./outputs/${INSTANCE_NAME}/
 
