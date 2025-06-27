@@ -44,7 +44,6 @@
 #define YY_DOUBLE_SUPPORTED 0
 #endif
 
-
 template<arithmetic_float T>
 struct BenchArgs {
   using Type = T;
@@ -63,7 +62,6 @@ struct BenchArgs {
 
 namespace BenchmarkShortest {
 
-
 /**
  * We have that std::to_chars does not produce the shortest
  * representation for numbers in scientific notation, so we
@@ -71,15 +69,16 @@ namespace BenchmarkShortest {
  */
 inline std::string optimize_number_string(const std::string &input) {
   // Check if input contains 'E' or 'e' for scientific notation
-  auto e_pos = input.find_first_of("Ee");
-  if (e_pos != std::string::npos) {
+  if (const auto e_pos = input.find_first_of("Ee");
+      e_pos != std::string::npos) {
     // Handle scientific notation
-    std::string mantissa = input.substr(0, e_pos);
+    const std::string mantissa = input.substr(0, e_pos);
     std::string exponent = input.substr(e_pos + 1);
 
     // Remove leading zeros in exponent, preserving sign
-    bool negative = exponent[0] == '-';
-    exponent.erase(0, negative ? 1 : 0);
+    const bool negative = exponent[0] == '-';
+    const bool positive = exponent[0] == '+';
+    exponent.erase(0, (negative || positive) ? 1 : 0);
     exponent.erase(0, exponent.find_first_not_of('0'));
     if (exponent.empty())
       exponent = "0";
@@ -87,7 +86,7 @@ inline std::string optimize_number_string(const std::string &input) {
       exponent = "-" + exponent;
 
     // Reconstruct the number
-    return mantissa + "E" + exponent;
+    return mantissa + "e" + exponent;
   }
 
   // Handle non-scientific notation
@@ -95,28 +94,29 @@ inline std::string optimize_number_string(const std::string &input) {
     return input;
 
   // Determine sign
-  bool is_negative = input[0] == '-';
-  std::string num = is_negative ? input.substr(1) : input;
+  const bool is_negative = input[0] == '-';
 
   // Find first and last significant digits
-  std::string digits = num;
-  size_t decimal_pos = digits.find('.');
-  if (decimal_pos != std::string::npos) {
-    digits.erase(decimal_pos, 1); // Remove decimal point
+  std::string digits = is_negative ? input.substr(1) : input;
+  if (const size_t decimal_pos = digits.find('.');
+      decimal_pos != std::string::npos) {
+    digits.erase(decimal_pos, 1);  // Remove decimal point
   }
-  size_t first_non_zero = digits.find_first_not_of('0');
-  size_t last_non_zero = digits.find_last_not_of('0');
+  const size_t first_non_zero = digits.find_first_not_of('0');
+  const size_t last_non_zero = digits.find_last_not_of('0');
   digits = digits.substr(first_non_zero, last_non_zero - first_non_zero + 1);
+
   // Count significant digits
-  size_t num_digits = digits.length();
+  const size_t num_digits = digits.length();
   if (num_digits == 0)
     return input;
-  // Calculate exponent
-  size_t input_decimal_pos = input.find('.');
-  size_t input_first_non_zero = input.find_first_not_of('0');
-  size_t input_last_non_zero = input.find_last_not_of('0');
 
-  int exponent = 0;
+  // Calculate exponent
+  const size_t input_decimal_pos = input.find('.');
+  const size_t input_first_non_zero = input.find_first_not_of('0');
+  const size_t input_last_non_zero = input.find_last_not_of('0');
+
+  int exponent;
   if (input_decimal_pos == std::string::npos) {
     // we have 123232900000
     exponent = (input_last_non_zero - input_first_non_zero);
@@ -126,19 +126,21 @@ inline std::string optimize_number_string(const std::string &input) {
   } else {
     // Number like 0.000123
     exponent =
-        -static_cast<int>(input.find_first_not_of('0', input_decimal_pos + 1) -
-                          input_decimal_pos);
+      -static_cast<int>(input.find_first_not_of('0', input_decimal_pos + 1)
+                        - input_decimal_pos);
   }
   // Calculate scientific notation length
-  size_t mantissa_len =
-      num_digits + (num_digits > 1 ? 1 : 0); // Digits + optional decimal
-  size_t exponent_len = (exponent == 0) ? 1
-                                        : (exponent < 0 ? 1 : 0) +
-                                              (std::abs(exponent) < 10    ? 1
-                                               : std::abs(exponent) < 100 ? 2
-                                                                          : 3);
-  size_t sci_len = mantissa_len + 1 + exponent_len +
-                   (is_negative ? 1 : 0); // Mantissa + E + exponent + sign
+  const size_t mantissa_len =
+    num_digits + (num_digits > 1 ? 1 : 0);  // Digits + optional decimal
+  const size_t exponent_len = (exponent == 0)
+                                  ? 1
+                                  : (exponent < 0 ? 1 : 0)
+                                        + (std::abs(exponent) < 10    ? 1
+                                           : std::abs(exponent) < 100 ? 2
+                                                                      : 3);
+  const size_t sci_len =
+    mantissa_len + 1 + exponent_len
+        + (is_negative ? 1 : 0);  // Mantissa + E + exponent + sign
 
   // Compare lengths
   if (sci_len >= input.length())
@@ -551,7 +553,6 @@ int std_to_chars(T d, std::span<char>& buffer) {
   std::abort();
 #endif
 }
-
 
 }  // namespace BenchmarksShortest
 
