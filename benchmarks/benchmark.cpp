@@ -37,11 +37,11 @@ void evaluateProperties(const std::vector<TestCase<T>> &lines,
 }
 
 struct diy_float_t {
-    diy_float_t(uint64_t significand, int exponent, bool is_negative)
-      : significand(significand), exponent(exponent), is_negative(is_negative) {}
-		uint64_t	      significand;
-		int							exponent;
-		bool						is_negative;
+  diy_float_t(uint64_t significand, int exponent, bool is_negative)
+    : significand(significand), exponent(exponent), is_negative(is_negative) {}
+  uint64_t significand;
+  int exponent;
+  bool is_negative;
 };
 
 template <arithmetic_float T>
@@ -144,23 +144,24 @@ std::vector<TestCase<T>> get_random_numbers(size_t howmany,
 // Checks if a floating-point number is exactly representable as the specified integer type
 template <std::integral int_type, std::floating_point float_type>
 bool is_exact_integer(float_type x) {
-    if (!std::isfinite(x)) {
-        return false;
-    }
-    int_type i = static_cast<int_type>(x);
-    return static_cast<float_type>(i) == x;
+  if (!std::isfinite(x)) {
+    return false;
+  }
+  int_type i = static_cast<int_type>(x);
+  return static_cast<float_type>(i) == x;
 }
 
 // New template version of describe
 template <typename T>
-void describe(const std::variant<std::vector<TestCase<float>>, std::vector<TestCase<double>>> &numbers,
-             std::vector<BenchArgs<T>> args,
-             const std::vector<std::string> &algo_filter) {
-              if constexpr (std::is_same_v<T, float>) {
-                args.push_back(get_std_to_chars_shorter<float>());
-              } else if constexpr (std::is_same_v<T, double>) {
-                args.push_back(get_std_to_chars_shorter<double>());
-              }
+void describe(const std::variant<std::vector<TestCase<float>>,
+              std::vector<TestCase<double>>> &numbers,
+              std::vector<BenchArgs<T>> args,
+              const std::vector<std::string> &algo_filter) {
+  if constexpr (std::is_same_v<T, float>) {
+    args.push_back(get_std_to_chars_shorter<float>());
+  } else if constexpr (std::is_same_v<T, double>) {
+    args.push_back(get_std_to_chars_shorter<double>());
+  }
 
   std::visit([&args, &algo_filter](const auto &lines) {
     size_t integers64 = 0;
