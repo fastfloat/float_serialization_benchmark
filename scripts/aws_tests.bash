@@ -102,6 +102,7 @@ create_key_pair() {
 
   echo "Creating new AWS key pair named ${KEY_NAME}"
   mkdir -p ~/.ssh
+  [ -f "$KEY_PATH" ] && rm -f "$KEY_PATH"
   aws ec2 create-key-pair --key-name "$KEY_NAME" \
     --query 'KeyMaterial' --output text > "$KEY_PATH"
   chmod 400 "$KEY_PATH"
@@ -131,7 +132,8 @@ create_security_group() {
     --group-id "${CREATED_SECURITY_GROUP}" \
     --protocol tcp \
     --port 22 \
-    --cidr 0.0.0.0/0
+    --cidr 0.0.0.0/0 \
+    --no-cli-pager
 
   SECURITY_GROUP="${CREATED_SECURITY_GROUP}"
   echo "Created security group: ${SECURITY_GROUP}"
@@ -181,7 +183,7 @@ process_instance() {
       linux-tools-common linux-tools-generic g++ clang cmake python3
 
     # Enable access to perf events for benchmarking
-    # Must use `sudo tee` since shell redirection (`>`) is not affected by sudo
+    # Must use 'sudo tee' since shell redirection ('>') is not affected by sudo
     echo -1 | sudo tee /proc/sys/kernel/perf_event_paranoid > /dev/null
 
     echo "Saving some info about the environment..."
