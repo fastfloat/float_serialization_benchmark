@@ -193,13 +193,13 @@ process_instance() {
     clang++ --version > outputs/clang++.txt
 
     echo "Building project with g++ and running the benchmarks..."
-    CXX=g++ cmake -B build . && cmake --build build
+    CC=gcc CXX=g++ cmake -B build . && cmake --build build
     ./scripts/generate_multiple_tables.py g++
 
     rm -rf build
 
     echo "Building project with clang++ and running the benchmarks..."
-    CXX=clang++ cmake -B build . && cmake --build build
+    CC=clang CXX=clang++ cmake -B build . && cmake --build build
     ./scripts/generate_multiple_tables.py clang++
 EOF
 
