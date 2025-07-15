@@ -36,15 +36,18 @@ CompilerLabel = sys.argv[1]
 
 
 def get_cpu_model():
+    env = os.environ.copy()
+    env["LANG"] = "C"
+
     system = platform.system()
     if system == "Windows":
         return platform.processor()
     elif system == "Darwin":
         os.environ['PATH'] = os.environ['PATH'] + os.pathsep + '/usr/sbin'
         command = ["sysctl", "-n", "machdep.cpu.brand_string"]
-        return subprocess.check_output(command, text=True).strip()
+        return subprocess.check_output(command, env=env, text=True).strip()
     elif system == "Linux":
-        output = subprocess.check_output(["lscpu"], text=True)
+        output = subprocess.check_output(["lscpu"], env=env, text=True)
         model_name = None
         architecture = None
         for line in output.splitlines():
@@ -78,14 +81,21 @@ def process_job(label, cmd_args, flags):
     # Build output file name
     flag_label = ''.join([f.strip('-') for f in flags]) or 'none'
     safe_label = label.replace('.', '_')
-    filename = f"{CPUModel}_{CompilerLabel}_{safe_label}_{flag_label}.tex"
-    out_path = os.path.join(output_dir, filename)
+    filename_tex = f"{CPUModel}_{CompilerLabel}_{safe_label}_{flag_label}.tex"
+    filename_raw = filename_tex[:-4] + '.raw'  # replace .tex with .raw
+    out_path_tex = os.path.join(output_dir, filename_tex)
+    out_path_raw = os.path.join(output_dir, filename_raw)
 
-    # Write to file
+    # Write LaTeX table to file
     tex_content = generate_latex_table(output)
-    with open(out_path, 'w') as f:
+    with open(out_path_tex, 'w') as f:
         f.write(tex_content)
-    print(f"Written: {out_path}\n", flush=True)
+    print(f"Written: {out_path_tex}", flush=True)
+
+    # Write raw output to .raw file
+    with open(out_path_raw, 'w') as f:
+        f.write(output)
+    print(f"Written: {out_path_raw}\n", flush=True)
 
 
 if __name__ == '__main__':
