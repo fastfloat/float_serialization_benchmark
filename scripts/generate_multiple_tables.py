@@ -23,9 +23,9 @@ runs_r = 100
 volume_v = 100_000
 flag_combinations = [
     [],
-    ['-F6'],
+    # ['-F6'],
     ['-s'],
-    ['-F6', '-s'],
+    # ['-F6', '-s'],
 ]
 
 # Get compiler label from command line
@@ -43,7 +43,7 @@ def get_cpu_model():
     if system == "Windows":
         return platform.processor()
     elif system == "Darwin":
-        os.environ['PATH'] = os.environ['PATH'] + os.pathsep + '/usr/sbin'
+        os.environ['PATH'] += os.pathsep + '/usr/sbin'
         command = ["sysctl", "-n", "machdep.cpu.brand_string"]
         return subprocess.check_output(command, env=env, text=True).strip()
     elif system == "Linux":

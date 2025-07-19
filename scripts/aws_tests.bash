@@ -52,6 +52,8 @@ VOLUME_SIZE=10 # in GB
 KEY_NAME="${AWS_KEY_NAME:-aws_auto}" # Key path is assumed to be ~/.ssh/${KEY_NAME}.pem
 SECURITY_GROUP="${AWS_SECURITY_GROUP:-}"
 
+RETRIES=5 # Number of retries when a problem occurs during instance processing
+
 # --------------------
 # Internal variables (do not modify)
 # --------------------
@@ -65,13 +67,16 @@ CREATED_SECURITY_GROUP=""
 # Cleanup function to delete created security group on exit
 cleanup() {
   if [ -n "${CREATED_SECURITY_GROUP}" ]; then
-    echo "Cleaning up security group: ${CREATED_SECURITY_GROUP}"
-    aws ec2 delete-security-group --group-id "${CREATED_SECURITY_GROUP}" || true
+    if aws ec2 delete-security-group --group-id "${CREATED_SECURITY_GROUP}"; then
+      echo "Cleaned up security group: ${CREATED_SECURITY_GROUP}"
+    else
+      echo "Failed to clean up security group ${CREATED_SECURITY_GROUP}; you should delete it manually."
+    fi
   fi
 }
 
 check_prerequisites() {
-  if ((BASH_VERSINFO[0] < 4)); then
+  if (( BASH_VERSINFO[0] < 4 )); then
     echo "Error: This script requires Bash version 4 or higher." >&2
     exit 1
   fi
@@ -148,36 +153,28 @@ get_arch() {
   fi
 }
 
-process_instance() {
-  INSTANCE_NAME=$1
-  AMI_ID=$2
-  echo "Running instance for ${INSTANCE_NAME} with AMI ${AMI_ID}"
+ensure_ssh_ready() {
+  local ip="$1"
+  for i in {1..30}; do
+    if ${SSH_COMMAND} ubuntu@${ip} "echo SSH Ready" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 5
+  done
+  echo "SSH did not become ready on ${ip} after waiting."
+  return 1
+}
 
-  INSTANCE_ID=$(aws ec2 run-instances \
-    --image-id ${AMI_ID} \
-    --instance-type ${INSTANCE_NAME} \
-    --key-name ${KEY_NAME} \
-    --block-device-mappings "DeviceName=/dev/sda1,Ebs={VolumeSize=${VOLUME_SIZE}}" \
-    --associate-public-ip-address \
-    --security-group-ids ${SECURITY_GROUP} \
-    --count "1" --query 'Instances[0].InstanceId' --output text)
-
-  echo "Waiting for instance ${INSTANCE_ID} to be ready..."
-  aws ec2 wait instance-status-ok --instance-ids ${INSTANCE_ID}
-  echo "Started instance: ${INSTANCE_ID}"
-
-  PUBLIC_IP=$(aws ec2 describe-instances \
-    --instance-ids ${INSTANCE_ID} \
-    --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
-  echo "Instance ${INSTANCE_ID} public IP: ${PUBLIC_IP}"
-
+do_remote_work() {
+  local ip="$1"
   git ls-files -z | rsync -avz --partial --progress --from0 --files-from=- -e "${SSH_COMMAND}" \
-    ./ ubuntu@${PUBLIC_IP}:~/${PROJECT_DIR}
-  ${SSH_COMMAND} ubuntu@${PUBLIC_IP} << EOF
+    ./ ubuntu@${ip}:~/${PROJECT_DIR} || return 1
+
+  ${SSH_COMMAND} ubuntu@${ip} << EOF
     set -e # Exit on error
     cd ~/${PROJECT_DIR}
 
-    echo "Updating and installing dependencies on ${INSTANCE_NAME}..."
+    echo "Updating and installing dependencies..."
     sudo apt update
     sudo DEBIAN_FRONTEND=noninteractive apt install -y \
       linux-tools-common linux-tools-generic g++ clang cmake python3
@@ -202,14 +199,52 @@ process_instance() {
     CC=clang CXX=clang++ cmake -B build . && cmake --build build
     ./scripts/generate_multiple_tables.py clang++
 EOF
+}
 
-  echo "Script executed successfully on ${INSTANCE_NAME}"
+process_instance() {
+  INSTANCE_NAME=$1
+  AMI_ID=$2
+  echo "Running instance for ${INSTANCE_NAME} with AMI ${AMI_ID}"
+
+  INSTANCE_ID=$(aws ec2 run-instances \
+    --image-id ${AMI_ID} \
+    --instance-type ${INSTANCE_NAME} \
+    --key-name ${KEY_NAME} \
+    --block-device-mappings "DeviceName=/dev/sda1,Ebs={VolumeSize=${VOLUME_SIZE}}" \
+    --associate-public-ip-address \
+    --security-group-ids ${SECURITY_GROUP} \
+    --count "1" --query 'Instances[0].InstanceId' --output text)
+
+  echo "Waiting for instance ${INSTANCE_ID} to be ready..."
+  aws ec2 wait instance-status-ok --instance-ids ${INSTANCE_ID}
+  echo "Started instance: ${INSTANCE_ID}"
+
+  PUBLIC_IP=$(aws ec2 describe-instances \
+    --instance-ids ${INSTANCE_ID} \
+    --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
+  echo "Instance ${INSTANCE_ID} public IP: ${PUBLIC_IP}"
+  ensure_ssh_ready "${PUBLIC_IP}"
+
+  for attempt in $(seq 1 ${RETRIES}); do
+    if do_remote_work "${PUBLIC_IP}"; then
+      echo "Remote work completed successfully"
+      break
+    else
+      echo "Attempt ${attempt} failed, retrying..."
+      sleep 10
+    fi
+  done
+
   mkdir -p "./outputs/${INSTANCE_NAME}"
   rsync -avz --partial --progress -e "${SSH_COMMAND}" \
-    ubuntu@${PUBLIC_IP}:~/${PROJECT_DIR}/outputs/ ./outputs/${INSTANCE_NAME}/
+    ubuntu@${PUBLIC_IP}:~/${PROJECT_DIR}/outputs/ ./outputs/${INSTANCE_NAME}/ \
+    || echo "Failed to copy outputs from ${PUBLIC_IP}"
 
-  aws ec2 terminate-instances --instance-ids ${INSTANCE_ID}
-  echo "Terminated instance: ${INSTANCE_ID}"
+  if aws ec2 terminate-instances --instance-ids ${INSTANCE_ID}; then
+    echo "Terminated instance: ${INSTANCE_ID}"
+  else
+    echo "Failed to terminate instance ${INSTANCE_ID}; you should terminate it manually."
+  fi
 }
 
 main () {
@@ -219,11 +254,12 @@ main () {
   create_security_group
 
   echo "Launching ${#INSTANCES_aarch64[@]} aarch64 instances and ${#INSTANCES_x86_64[@]} x86_64 instances in parallel..."
-  for INSTANCE_NAME in "${INSTANCES_x86_64[@]}" "${INSTANCES_aarch64[@]}"; do
+  for INSTANCE_NAME in "${INSTANCES_aarch64[@]}" "${INSTANCES_x86_64[@]}"; do
     ARCH=$(get_arch "$INSTANCE_NAME")
     AMI_ID="${AMI_MAP[$ARCH]}"
 
     process_instance "${INSTANCE_NAME}" "${AMI_ID}" 2>&1 | tee "${INSTANCE_NAME}.log" &
+    sleep 1
   done
 
   # Wait for all background jobs to finish
