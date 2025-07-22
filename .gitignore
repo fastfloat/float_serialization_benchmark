@@ -1,10 +1,9 @@
-build
-build_debug
-build_script
+build*
 .gdb_history
 outputs
 tags
 compile_commands.json
 .cache
+perf.data*
 *.log
 **/__pycache__
