@@ -11,12 +11,21 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.30")
 endif()
 
 include(CheckCXXCompilerFlag)
-unset(SIMPLE_FAST_FLOAT_BENCHMARK_COMPILER_SUPPORTS_MARCH_NATIVE CACHE)
-CHECK_CXX_COMPILER_FLAG(-march=native SIMPLE_FAST_FLOAT_BENCHMARK_COMPILER_SUPPORTS_MARCH_NATIVE)
-if(SIMPLE_FAST_FLOAT_BENCHMARK_COMPILER_SUPPORTS_MARCH_NATIVE)
-    add_compile_options(-march=native)
+set(SIMPLE_FAST_FLOAT_BENCHMARK_MARCH "" CACHE STRING
+    "Set -march value for benchmarks (e.g. native, x86-64-v4, etc)")
+
+if(NOT SIMPLE_FAST_FLOAT_BENCHMARK_MARCH)
+  set(_SFF_MARCH_FLAG "-march=native")
 else()
-     message(STATUS "native target not supported")
+  set(_SFF_MARCH_FLAG "-march=${SIMPLE_FAST_FLOAT_BENCHMARK_MARCH}")
+endif()
+
+CHECK_CXX_COMPILER_FLAG(${_SFF_MARCH_FLAG} _SFF_MARCH_SUPPORTED)
+if(_SFF_MARCH_SUPPORTED)
+  add_compile_options(${_SFF_MARCH_FLAG})
+  message(STATUS "Compiling with ${_SFF_MARCH_FLAG}")
+else()
+  message(STATUS "${_SFF_MARCH_FLAG} not supported, proceeding without -march flag.")
 endif()
 
 if (NOT CMAKE_BUILD_TYPE AND NOT SANITIZE)
