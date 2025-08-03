@@ -1,11 +1,26 @@
 #!/usr/bin/env python3
+"""
+Convert benchmark output to LaTeX tables.
+
+This script parses benchmark output data and generates a formatted LaTeX table
+with performance metrics (ns/float, instructions/float, instructions/cycle).
+It formats numbers to two significant digits for readability.
+"""
 import sys
 import re
 import argparse
 
 
-# Function to format a number to two significant digits
 def format_to_two_sig_digits(value):
+    """
+    Format a number to two significant digits with appropriate notation.
+
+    Args:
+        value: The number to format
+
+    Returns:
+        A string representation of the number with two significant digits
+    """
     if not isinstance(value, (int, float)) or value == 0:
         return "N/A"
 
@@ -36,8 +51,16 @@ def format_to_two_sig_digits(value):
         return f"{'-' if is_negative else ''}{abs_value:.1f}e{exponent}"
 
 
-# Function to parse the raw input data
 def parse_input(data):
+    """
+    Parse benchmark output data to extract performance metrics.
+
+    Args:
+        data: Raw benchmark output as a string
+
+    Returns:
+        List of dictionaries containing parsed metrics for each algorithm
+    """
     lines = data.splitlines()
     parsed_data = []
     current_entry = None
@@ -48,7 +71,8 @@ def parse_input(data):
         if not line or line.startswith("#"):
             continue
 
-        # Match lines that start a new entry (e.g., "just_string : 1365.92 MB/s ...")
+        # Match lines that start a new entry
+        # e.g., "just_string : 1365.92 MB/s ..."
         match_entry = re.match(r"(\S+)\s*:\s*[\d.]+\s*MB/s", line)
         if match_entry:
             current_entry = {"name": match_entry.group(1)}
@@ -75,8 +99,16 @@ def parse_input(data):
     return parsed_data
 
 
-# Function to generate LaTeX table
 def generate_latex_table(raw_input):
+    """
+    Generate a LaTeX table from benchmark output data.
+
+    Args:
+        raw_input: Raw benchmark output as a string
+
+    Returns:
+        Formatted LaTeX table as a string
+    """
     data = parse_input(raw_input)
 
     latex_table = r"""
@@ -86,7 +118,7 @@ def generate_latex_table(raw_input):
 \midrule
 """
     for entry in data:
-        name = entry["name"].replace("_", "\\_")  # Escape underscores for LaTeX
+        name = entry["name"].replace("_", "\\_")  # Escape underscore for LaTeX
         ns_per_float = format_to_two_sig_digits(entry['ns_per_float']) if 'ns_per_float' in entry else 'N/A'
         inst_per_float = format_to_two_sig_digits(entry['inst_per_float']) if 'inst_per_float' in entry else 'N/A'
         inst_per_cycle = format_to_two_sig_digits(entry['inst_per_cycle']) if 'inst_per_cycle' in entry else 'N/A'
@@ -97,9 +129,13 @@ def generate_latex_table(raw_input):
     return latex_table
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate LaTeX table from performance data")
-    parser.add_argument("file", nargs="?", help="Optional input file name (if not provided, reads from stdin)")
+def main():
+    """Parse command line arguments and generate LaTeX table."""
+    parser = argparse.ArgumentParser(
+        description="Generate LaTeX table from performance data")
+    parser.add_argument(
+        "file", nargs="?",
+        help="Optional input file name (if not provided, reads from stdin)")
     args = parser.parse_args()
 
     # Read input data
@@ -118,3 +154,7 @@ if __name__ == "__main__":
 
     latex_output = generate_latex_table(raw_input)
     print(latex_output)
+
+
+if __name__ == "__main__":
+    main()
