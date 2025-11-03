@@ -44,6 +44,8 @@
 #define YY_DOUBLE_SUPPORTED 0
 #endif
 
+#include "champagne_lemire/champagne_lemire.h"
+
 template<arithmetic_float T>
 struct BenchArgs {
   using Type = T;
@@ -333,14 +335,16 @@ int ryu(T d, std::span<char>& buffer) {
 
 template<arithmetic_float T>
 int teju_jagua(T d, std::span<char>& buffer) {
-  if(d == 0.0) {
-    std::copy_n("0E0", 3, buffer.data());
-    return 3;
+  char * output = buffer.data();
+  output[0] = '-';
+  if(std::signbit(d)) {
+    output++;
+    // d = -d; // unnecessary, teju handles sign?
   }
   const auto fields = teju::traits_t<T>::teju(d);
-  const bool sign = std::signbit(d);
-  return to_chars(fields.mantissa, fields.exponent, sign, buffer.data());
+  return champagne_lemire::to_chars(fields.mantissa, fields.exponent, output);
 }
+
 
 template<arithmetic_float T>
 int double_conversion(T d, std::span<char>& buffer) {
