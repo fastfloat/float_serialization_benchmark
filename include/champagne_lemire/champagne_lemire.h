@@ -31,17 +31,17 @@
 #else
 // Fallback: A [[noreturn]] function that terminates the program
 [[noreturn]] inline void champagne_lemire_unreachable_fail() {
-    // In debug/test builds, you might want to log/assert before aborting.
-    // This is intentionally minimal for a release-mode like 'unreachable'.
-    std::abort();
+  // In debug/test builds, you might want to log/assert before aborting.
+  // This is intentionally minimal for a release-mode like 'unreachable'.
+  std::abort();
 }
 #define champagne_lemire_unreachable() champagne_lemire_unreachable_fail()
 #endif
 
 #include <array>
 #include <bit>
-#include <cstring>
 #include <cstdint>
+#include <cstring>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -120,28 +120,80 @@ champagne_lemire_really_inline int fast_digit_count32(uint32_t x) {
  * https://lemire.me/blog/2025/01/07/counting-the-digits-of-64-bit-integers/.
  */
 champagne_lemire_really_inline int fast_digit_count64(uint64_t x) {
-  static uint64_t table[] = {9,
-                             99,
-                             999,
-                             9999,
-                             99999,
-                             999999,
-                             9999999,
-                             99999999,
-                             999999999,
-                             9999999999,
-                             99999999999,
-                             999999999999,
-                             9999999999999,
-                             99999999999999,
-                             999999999999999ULL,
-                             9999999999999999ULL,
-                             99999999999999999ULL,
-                             999999999999999999ULL,
-                             9999999999999999999ULL};
-  int y = (19 * int_log2_64(x) >> 6);
-  y += x > table[y];
-  return y + 1;
+  static int digits[65] = {19, 19, 19, 19, 18, 18, 18, 17, 17, 17, 16, 16, 16,
+                           16, 15, 15, 15, 14, 14, 14, 13, 13, 13, 13, 12, 12,
+                           12, 11, 11, 11, 10, 10, 10, 10, 9,  9,  9,  8,  8,
+                           8,  7,  7,  7,  7,  6,  6,  6,  5,  5,  5,  4,  4,
+                           4,  4,  3,  3,  3,  2,  2,  2,  1,  1,  1,  1,  1};
+  static uint64_t table[65] = {18446744073709551615ULL,
+                               18446744073709551615ULL,
+                               18446744073709551615ULL,
+                               18446744073709551615ULL,
+                               999999999999999999ULL,
+                               999999999999999999ULL,
+                               999999999999999999ULL,
+                               99999999999999999ULL,
+                               99999999999999999ULL,
+                               99999999999999999ULL,
+                               9999999999999999ULL,
+                               9999999999999999ULL,
+                               9999999999999999ULL,
+                               9999999999999999ULL,
+                               999999999999999ULL,
+                               999999999999999ULL,
+                               999999999999999ULL,
+                               99999999999999ULL,
+                               99999999999999ULL,
+                               99999999999999ULL,
+                               9999999999999ULL,
+                               9999999999999ULL,
+                               9999999999999ULL,
+                               9999999999999ULL,
+                               999999999999ULL,
+                               999999999999ULL,
+                               999999999999ULL,
+                               99999999999ULL,
+                               99999999999ULL,
+                               99999999999ULL,
+                               9999999999ULL,
+                               9999999999ULL,
+                               9999999999ULL,
+                               9999999999ULL,
+                               999999999ULL,
+                               999999999ULL,
+                               999999999ULL,
+                               99999999ULL,
+                               99999999ULL,
+                               99999999ULL,
+                               9999999ULL,
+                               9999999ULL,
+                               9999999ULL,
+                               9999999ULL,
+                               999999ULL,
+                               999999ULL,
+                               999999ULL,
+                               99999ULL,
+                               99999ULL,
+                               99999ULL,
+                               9999ULL,
+                               9999ULL,
+                               9999ULL,
+                               9999ULL,
+                               999ULL,
+                               999ULL,
+                               999ULL,
+                               99ULL,
+                               99ULL,
+                               99ULL,
+                               9ULL,
+                               9ULL,
+                               9ULL,
+                               9ULL,
+                               0ULL};
+  int log = std::countl_zero(x);
+  uint64_t low = table[log];
+  uint64_t high = digits[log];
+  return (x > low) + high;
 }
 
 template <typename T> champagne_lemire_really_inline int fast_digit_count(T x) {
@@ -154,7 +206,6 @@ template <typename T> champagne_lemire_really_inline int fast_digit_count(T x) {
   }
 }
 
-
 namespace digits {
 // This will divide by 100 using multiplication and shifts
 // and leave a remainder that is not x%100 but that
@@ -164,42 +215,48 @@ namespace digits {
 //
 // So div100v returns (x / 100, x % 100) but the second
 // value is not exactly x % 100, it is a value unique to x mod 100
-constexpr champagne_lemire_really_inline std::pair<uint64_t, uint64_t> div100v(uint64_t x) {
+constexpr champagne_lemire_really_inline std::pair<uint64_t, uint64_t>
+div100v(uint64_t x) {
   const uint64_t v = x * uint64_t(0x28f5c29); // ceil(2^32 / 100)
   return {v >> 32, (v >> 24) & 0xff};
 }
 
-champagne_lemire_really_inline std::pair<uint64_t, uint64_t> div100(uint64_t x) {
-  const uint64_t q = multiplier::mul64x64_to_128(x, 0x28f5c28f5c28f5d).first; // ceil(2^64 / 100)
+champagne_lemire_really_inline std::pair<uint64_t, uint64_t>
+div100(uint64_t x) {
+  const uint64_t q = multiplier::mul64x64_to_128(x, 0x28f5c28f5c28f5d)
+                         .first; // ceil(2^64 / 100)
   return {q, x - 100 * q};
 }
 
-enum {
-  maybe_larger_than_1e15 = true,
-  definitely_less_than_1e15 = false
-};
+enum { maybe_larger_than_1e15 = true, definitely_less_than_1e15 = false };
 
 template <bool maybe_larger_than_1e15>
-champagne_lemire_really_inline std::pair<uint64_t, uint64_t> div10000(uint64_t x) {
+champagne_lemire_really_inline std::pair<uint64_t, uint64_t>
+div10000(uint64_t x) {
   if constexpr (maybe_larger_than_1e15) {
-    const uint64_t q = multiplier::mul64x64_to_128(x, 0x346dc5d63886594bull).first >> 11;
+    const uint64_t q =
+        multiplier::mul64x64_to_128(x, 0x346dc5d63886594bull).first >> 11;
     const uint64_t r = x - 10000 * q;
     return {q, r};
   } else {
-    const uint64_t q = multiplier::mul64x64_to_128(x, 0x68db8bac710cc).first; // ceil(2^64 / 10000)
+    const uint64_t q = multiplier::mul64x64_to_128(x, 0x68db8bac710cc)
+                           .first; // ceil(2^64 / 10000)
     const uint64_t r = x - 10000 * q;
     return {q, r};
   }
 }
 
 // This is the constant g++15 generates (Granlund-Montgomery ?)
-champagne_lemire_really_inline std::pair<uint64_t, uint64_t> div10e16(uint64_t x) {
-  const uint64_t q = multiplier::mul64x64_to_128(x, 0x39A5652FB1137857ull).first >> 51;
+champagne_lemire_really_inline std::pair<uint64_t, uint64_t>
+div10e16(uint64_t x) {
+  const uint64_t q =
+      multiplier::mul64x64_to_128(x, 0x39A5652FB1137857ull).first >> 51;
   const uint64_t r = x - 10'000'000'000'000'000ull * q;
   return {q, r};
 }
 
-champagne_lemire_really_inline std::array<char, 2> get_one_digit_with_dot(uint32_t value) {
+champagne_lemire_really_inline std::array<char, 2>
+get_one_digit_with_dot(uint32_t value) {
   constexpr static std::array<std::array<char, 2>, 10> digit_table = []() {
     std::array<std::array<char, 2>, 10> table;
     for (int i = 0; i < 10; ++i) {
@@ -212,137 +269,148 @@ champagne_lemire_really_inline std::array<char, 2> get_one_digit_with_dot(uint32
   return digit_table[value];
 }
 
-champagne_lemire_really_inline std::array<char, 3> get_two_digits_with_dot(uint32_t value) {
+champagne_lemire_really_inline std::array<char, 3>
+get_two_digits_with_dot(uint32_t value) {
   constexpr static std::array<std::array<char, 3>, 100> hundreds_digit_table =
-    []() {
-      std::array<std::array<char, 3>, 100> table{};
-      for (int i = 0; i < 100; ++i) {
-        table[i] = {static_cast<char>((i / 10) % 10 + '0'), '.',
-                    static_cast<char>((i % 10) + '0')};
-      }
-      return table;
-    }();
+      []() {
+        std::array<std::array<char, 3>, 100> table{};
+        for (int i = 0; i < 100; ++i) {
+          table[i] = {static_cast<char>((i / 10) % 10 + '0'), '.',
+                      static_cast<char>((i % 10) + '0')};
+        }
+        return table;
+      }();
   return hundreds_digit_table[value];
 }
 
-
-
-champagne_lemire_really_inline std::array<char, 4> get_two_digits_with_dot_with_one_pad(uint32_t value) {
+champagne_lemire_really_inline std::array<char, 4>
+get_two_digits_with_dot_with_one_pad(uint32_t value) {
   constexpr static std::array<std::array<char, 4>, 100> hundreds_digit_table =
-    []() {
-      std::array<std::array<char, 4>, 100> table{};
-      for (int i = 0; i < 100; ++i) {
-        table[i] = {static_cast<char>((i / 10) % 10 + '0'), '.',
-                    static_cast<char>((i % 10) + '0'), '0'}; // extra pad
-      }
-      return table;
-    }();
+      []() {
+        std::array<std::array<char, 4>, 100> table{};
+        for (int i = 0; i < 100; ++i) {
+          table[i] = {static_cast<char>((i / 10) % 10 + '0'), '.',
+                      static_cast<char>((i % 10) + '0'), '0'}; // extra pad
+        }
+        return table;
+      }();
   return hundreds_digit_table[value];
 }
 
-champagne_lemire_really_inline std::array<char, 2> get_two_digits_v(uint32_t value) {
+champagne_lemire_really_inline std::array<char, 2>
+get_two_digits_v(uint32_t value) {
   constexpr static std::array<std::array<char, 2>, 256> hundreds_digit_table =
-    []() {
-      std::array<std::array<char, 2>, 256> table{};
-      for (int i = 0; i < 10000; ++i) {
-        table[div100v(i).second] = {static_cast<char>((i / 10) % 10 + '0'),
-                                    static_cast<char>((i % 10) + '0')};
-      }
-      return table;
-    }();
+      []() {
+        std::array<std::array<char, 2>, 256> table{};
+        for (int i = 0; i < 10000; ++i) {
+          table[div100v(i).second] = {static_cast<char>((i / 10) % 10 + '0'),
+                                      static_cast<char>((i % 10) + '0')};
+        }
+        return table;
+      }();
   return hundreds_digit_table[value];
 }
 
-champagne_lemire_really_inline std::array<char, 2> get_two_digits(uint32_t value) {
+champagne_lemire_really_inline std::array<char, 2>
+get_two_digits(uint32_t value) {
   constexpr static std::array<std::array<char, 2>, 100> hundreds_digit_table =
-    []() {
-      std::array<std::array<char, 2>, 100> table;
-      for (int i = 0; i < 100; ++i) {
-        // Calculate the tens digit
-        table[i][0] = (i / 10) + '0';
-        // Calculate the units digit
-        table[i][1] = (i % 10) + '0';
-      }
-      return table;
-    }();
+      []() {
+        std::array<std::array<char, 2>, 100> table;
+        for (int i = 0; i < 100; ++i) {
+          // Calculate the tens digit
+          table[i][0] = (i / 10) + '0';
+          // Calculate the units digit
+          table[i][1] = (i % 10) + '0';
+        }
+        return table;
+      }();
   return hundreds_digit_table[value];
 }
 
 // We stop at 309 because that is the upper bound for the exponent in a double
-champagne_lemire_really_inline std::array<char, 3> get_three_digits(uint32_t value) {
-  constexpr static std::array<std::array<char, 3>, 309> digit_table =
-    []() {
-      std::array<std::array<char, 3>, 309> table;
-      for (int i = 0; i < 309; ++i) {
-        table[i][0] = (i / 100) + '0';
-        // Calculate the tens digit
-        table[i][1] = ((i / 10) % 10) + '0';
-        // Calculate the units digit
-        table[i][2] = (i % 10) + '0';
-      }
-      return table;
-    }();
+champagne_lemire_really_inline std::array<char, 3>
+get_three_digits(uint32_t value) {
+  constexpr static std::array<std::array<char, 3>, 309> digit_table = []() {
+    std::array<std::array<char, 3>, 309> table;
+    for (int i = 0; i < 309; ++i) {
+      table[i][0] = (i / 100) + '0';
+      // Calculate the tens digit
+      table[i][1] = ((i / 10) % 10) + '0';
+      // Calculate the units digit
+      table[i][2] = (i % 10) + '0';
+    }
+    return table;
+  }();
   return digit_table[value];
 }
 
-champagne_lemire_really_inline void write_one_digit_with_dot(char *buffer, uint32_t value) {
+champagne_lemire_really_inline void write_one_digit_with_dot(char *buffer,
+                                                             uint32_t value) {
   std::memcpy(buffer, get_one_digit_with_dot(value).data(), 2);
 }
 
-champagne_lemire_really_inline void write_two_digits_with_dot(char *buffer, uint32_t value) {
+champagne_lemire_really_inline void write_two_digits_with_dot(char *buffer,
+                                                              uint32_t value) {
   std::memcpy(buffer, get_two_digits_with_dot(value).data(), 3);
 }
 
 // writes two digits, a dot, and a padding zero, why the padding zero? because
 // it is faster to copy four bytes than three bytes on most architectures.
-champagne_lemire_really_inline void write_two_digits_with_dot_with_one_pad(char *buffer, uint32_t value) {
+champagne_lemire_really_inline void
+write_two_digits_with_dot_with_one_pad(char *buffer, uint32_t value) {
   std::memcpy(buffer, get_two_digits_with_dot_with_one_pad(value).data(), 4);
 }
 
-champagne_lemire_really_inline void write_two_digits(char *buffer, uint32_t value) {
+champagne_lemire_really_inline void write_two_digits(char *buffer,
+                                                     uint32_t value) {
   std::memcpy(buffer, get_two_digits(value).data(), 2);
 }
 
-champagne_lemire_really_inline void write_two_digits_v(char *buffer, uint32_t value) {
+champagne_lemire_really_inline void write_two_digits_v(char *buffer,
+                                                       uint32_t value) {
   std::memcpy(buffer, get_two_digits_v(value).data(), 2);
 }
 
-champagne_lemire_really_inline void write_three_digits(char *buffer, uint32_t value) {
+champagne_lemire_really_inline void write_three_digits(char *buffer,
+                                                       uint32_t value) {
   std::memcpy(buffer, get_three_digits(value).data(), 3);
 }
 
-champagne_lemire_really_inline void write_four_digits_10000(char *buffer, uint64_t value) {
+champagne_lemire_really_inline void write_four_digits_10000(char *buffer,
+                                                            uint64_t value) {
   auto [high, low] = div100v(value);
   std::memcpy(buffer, get_two_digits(high).data(), 2);
   std::memcpy(buffer + 2, get_two_digits_v(low).data(), 2);
 }
 
-champagne_lemire_really_inline char* write_three_or_four_digits_10000(char *buffer, uint64_t value) {
+champagne_lemire_really_inline char *
+write_three_or_four_digits_10000(char *buffer, uint64_t value) {
   auto [high, low] = div100v(value);
   if (value < 1000) {
     buffer[0] = char('0' + high);
     std::memcpy(buffer + 1, get_two_digits_v(low).data(), 2);
     return buffer + 3;
   } else {
-    std::memcpy(buffer,     get_two_digits(high).data(), 2);
+    std::memcpy(buffer, get_two_digits(high).data(), 2);
     std::memcpy(buffer + 2, get_two_digits_v(low).data(), 2);
     return buffer + 4;
   }
 }
 
-champagne_lemire_really_inline char* write_one_two_three_or_four_digits_10000(char *buffer, uint64_t value) {
-  if(value >= 1000) { // four digits
+champagne_lemire_really_inline char *
+write_one_two_three_or_four_digits_10000(char *buffer, uint64_t value) {
+  if (value >= 1000) { // four digits
     const auto [high, low] = div100v(value);
-    std::memcpy(buffer,     get_two_digits(high).data(), 2);
+    std::memcpy(buffer, get_two_digits(high).data(), 2);
     std::memcpy(buffer + 2, get_two_digits_v(low).data(), 2);
     return buffer + 4;
-  } else if(value >= 100) { // three digits
+  } else if (value >= 100) { // three digits
     // This could be further optimized:
     const auto [high, low] = div100v(value);
     buffer[0] = char('0' + high);
     std::memcpy(buffer + 1, get_two_digits_v(low).data(), 2);
     return buffer + 3;
-  } else if(value >= 10) {
+  } else if (value >= 10) {
     std::memcpy(buffer, get_two_digits(value).data(), 2);
     return buffer + 2;
   } else {
@@ -351,7 +419,6 @@ champagne_lemire_really_inline char* write_one_two_three_or_four_digits_10000(ch
   }
 }
 } // namespace digits
-
 
 template <typename T>
 champagne_lemire_really_inline int to_chars(T mantissa, int32_t exponent,
@@ -527,7 +594,8 @@ champagne_lemire_really_inline int to_chars(T mantissa, int32_t exponent,
     } break;
     case 12: {
       // We divide by 10^6, the binary remainder is in low10_6
-      auto [xdiv10_6, low10_6] = multiplier::mul64x64_to_128(mantissa, 18446744073710ULL);
+      auto [xdiv10_6, low10_6] =
+          multiplier::mul64x64_to_128(mantissa, 18446744073710ULL);
       auto [digits12, low10_6_1] = multiplier::mul64x64_to_128(low10_6, 100);
       digits::write_two_digits(result + 7, digits12);
       auto [digits23, low10_6_2] = multiplier::mul64x64_to_128(low10_6_1, 100);
@@ -535,7 +603,8 @@ champagne_lemire_really_inline int to_chars(T mantissa, int32_t exponent,
       auto [digits45, low10_6_3] = multiplier::mul64x64_to_128(low10_6_2, 100);
       digits::write_two_digits(result + 11, digits45);
       // We divide by 10^4 to get the first digits
-      auto [xdiv10_10, low10_12] = multiplier::mul64x64_to_128(xdiv10_6, 1844674407370956ULL);
+      auto [xdiv10_10, low10_12] =
+          multiplier::mul64x64_to_128(xdiv10_6, 1844674407370956ULL);
       digits::write_two_digits_with_dot_with_one_pad(result, xdiv10_10);
       auto [digits89, low10_12_1] = multiplier::mul64x64_to_128(low10_12, 100);
       digits::write_two_digits(result + 3, digits89);
@@ -545,7 +614,8 @@ champagne_lemire_really_inline int to_chars(T mantissa, int32_t exponent,
 
     case 11: {
       // We divide by 10^6, the binary remainder is in low10_6
-      auto [xdiv10_6, low10_6] = multiplier::mul64x64_to_128(mantissa, 18446744073710ULL);
+      auto [xdiv10_6, low10_6] =
+          multiplier::mul64x64_to_128(mantissa, 18446744073710ULL);
       auto [digits12, low10_6_1] = multiplier::mul64x64_to_128(low10_6, 100);
       digits::write_two_digits(result + 6, digits12);
       auto [digits23, low10_6_2] = multiplier::mul64x64_to_128(low10_6_1, 100);
@@ -553,7 +623,8 @@ champagne_lemire_really_inline int to_chars(T mantissa, int32_t exponent,
       auto [digits45, low10_6_3] = multiplier::mul64x64_to_128(low10_6_2, 100);
       digits::write_two_digits(result + 10, digits45);
       // We divide by 10^4 to get the first digits
-      auto [xdiv10_10, low10_12] = multiplier::mul64x64_to_128(xdiv10_6, 1844674407370956);
+      auto [xdiv10_10, low10_12] =
+          multiplier::mul64x64_to_128(xdiv10_6, 1844674407370956);
       digits::write_one_digit_with_dot(result, xdiv10_10);
       auto [digits89, low10_12_1] = multiplier::mul64x64_to_128(low10_12, 100);
       digits::write_two_digits(result + 2, digits89);
