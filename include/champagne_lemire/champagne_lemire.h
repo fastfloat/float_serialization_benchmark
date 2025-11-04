@@ -40,6 +40,8 @@
 
 #include <array>
 #include <bit>
+#include <cstring>
+#include <cstdint>
 #include <tuple>
 #include <type_traits>
 #include <utility>
