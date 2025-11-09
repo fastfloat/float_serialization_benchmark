@@ -44,6 +44,8 @@
 #define YY_DOUBLE_SUPPORTED 0
 #endif
 
+#include "champagne_lemire/champagne_lemire.h"
+
 template<arithmetic_float T>
 struct BenchArgs {
   using Type = T;
@@ -318,6 +320,25 @@ int schubfach(T d, std::span<char>& buffer) {
 }
 
 template<arithmetic_float T>
+int dragonboxlm(T d, std::span<char>& buffer) {
+  char * output = buffer.data();
+  output[0] = '-';
+  if(std::signbit(d)) {
+    output++;
+  }
+  // to_decimal requires a finite non-zero value.
+  if (d == 0.0) {
+    std::memcpy(output, "0.", 2);
+    return 2 + (std::signbit(d) ? 1 : 0);
+  }
+  auto decimal = jkj::dragonbox::to_decimal(d, jkj::dragonbox::policy::sign::ignore, jkj::dragonbox::policy::cache::full);
+  auto exponent = decimal.exponent;
+  auto mantissa = decimal.significand;
+  return champagne_lemire::to_chars(mantissa, exponent, output) + (std::signbit(d) ? 1 : 0);
+}
+
+
+template<arithmetic_float T>
 int dragonbox(T d, std::span<char>& buffer) {
   const char* end_ptr = jkj::dragonbox::to_chars(d, buffer.data());
   return end_ptr - buffer.data();
@@ -333,14 +354,15 @@ int ryu(T d, std::span<char>& buffer) {
 
 template<arithmetic_float T>
 int teju_jagua(T d, std::span<char>& buffer) {
-  if(d == 0.0) {
-    std::copy_n("0E0", 3, buffer.data());
-    return 3;
-  }
   const auto fields = teju::traits_t<T>::teju(d);
-  const bool sign = std::signbit(d);
-  return to_chars(fields.mantissa, fields.exponent, sign, buffer.data());
+  char * output = buffer.data();
+  output[0] = '-';
+  if(std::signbit(d)) {
+    output++;
+  }
+  return champagne_lemire::to_chars(fields.mantissa, fields.exponent, output) + (std::signbit(d) ? 1 : 0);
 }
+
 
 template<arithmetic_float T>
 int double_conversion(T d, std::span<char>& buffer) {
@@ -586,6 +608,7 @@ std::vector<BenchArgs<T>> initArgs(bool use_errol = false, size_t repeat = 0, si
     args.emplace_back("grisu3"            , wrap(s::grisu3<T>)            , std::is_same_v<T, double>);
     args.emplace_back("grisu_exact"       , wrap(s::grisu_exact<T>)       , true);
     args.emplace_back("schubfach"         , wrap(s::schubfach<T>)         , true);
+    args.emplace_back("dragonboxlm"       , wrap(s::dragonboxlm<T>)       , true);
     args.emplace_back("dragonbox"         , wrap(s::dragonbox<T>)         , true);
     args.emplace_back("ryu"               , wrap(s::ryu<T>)               , true);
     args.emplace_back("teju_jagua"        , wrap(s::teju_jagua<T>)        , true);

@@ -7,6 +7,7 @@
  * data generated.
  */
 
+ #include "champagne_lemire/champagne_lemire.h"
 #include "algorithms.h"
 #define IEEE_8087
 #include "benchutil.h"

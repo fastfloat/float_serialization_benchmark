@@ -1,3 +1,5 @@
+
+include_directories(../include)
 add_executable(benchmark
     benchmark.cpp
 )
