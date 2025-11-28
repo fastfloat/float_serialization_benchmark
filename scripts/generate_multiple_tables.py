@@ -16,6 +16,12 @@ from latex_table import generate_latex_table
 input_files = [
     'data/canada.txt',
     'data/mesh.txt',
+    'data/bitcoin.txt',
+    'data/gaia.txt',
+    'data/marine_ik.txt',
+    'data/mobilenetv3_large.txt',
+    'data/noaa_gfs_1p00.txt',
+    'data/noaa_global_hourly_2023.txt'
 ]
 models = [
     'uniform_01',

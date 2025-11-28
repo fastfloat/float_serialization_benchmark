@@ -116,12 +116,13 @@ std::vector<TestCase<T>> fileload(const std::string &filename) {
   std::vector<TestCase<T>> lines;
   lines.reserve(10000); // let us reserve plenty of memory.
   for (std::string line; getline(inputfile, line);) {
-    try {
-      lines.emplace_back(std::is_same_v<T, float> ? std::stof(line) : std::stod(line), line);
-    } catch (...) {
+    T value;
+    auto [ptr, ec] = std::from_chars(line.data(), line.data() + line.size(), value);
+    if (ec != std::errc()) {
       fmt::println(stderr, "problem with {}\nWe expect floating-point numbers (one per line).", line);
       std::abort();
     }
+    lines.emplace_back(value, line);
   }
   fmt::println("# read {} lines", lines.size());
   return lines;
