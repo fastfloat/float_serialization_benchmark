@@ -14,8 +14,8 @@ from latex_table import generate_latex_table
 
 # Configuration
 input_files = [
-    'data/canada.txt',
-    'data/mesh.txt',
+    # 'data/canada.txt',
+    # 'data/mesh.txt',
     'data/bitcoin.txt',
     'data/gaia.txt',
     'data/marine_ik.txt',
@@ -24,7 +24,7 @@ input_files = [
     'data/noaa_global_hourly_2023.txt'
 ]
 models = [
-    'uniform_01',
+    # 'uniform_01',
     # 'logspace_all',
     # 'integer_uniform',
     # 'centered',
