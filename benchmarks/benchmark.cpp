@@ -117,7 +117,9 @@ std::vector<TestCase<T>> fileload(const std::string &filename) {
   lines.reserve(10000); // let us reserve plenty of memory.
   for (std::string line; getline(inputfile, line);) {
     T value;
-    auto [ptr, ec] = std::from_chars(line.data(), line.data() + line.size(), value);
+    // use fast_float::from_chars to parse the float and not
+    // std::from_chars since fast_float is always available unlike std::from_chars.
+    auto [ptr, ec] = fast_float::from_chars(line.data(), line.data() + line.size(), value);
     if (ec != std::errc()) {
       fmt::println(stderr, "problem with {}\nWe expect floating-point numbers (one per line).", line);
       std::abort();
