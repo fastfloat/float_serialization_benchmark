@@ -18,7 +18,7 @@
 #endif
 
 #include <fmt/format.h>
-
+#include <fmt/compile.h>
 #include <array>
 #include <span>
 
@@ -287,7 +287,9 @@ int to_string(T d, std::span<char>& buffer) {
 
 template<arithmetic_float T>
 int fmt_format(T d, std::span<char>& buffer) {
-  const auto it = fmt::format_to(buffer.data(), "{}", d);
+  // FMT_COMPILE is a macro provided by the {fmt} library that tells the library to fully process 
+  // a format string at compile time rather than at runtime.
+  const auto it = fmt::format_to(buffer.data(), FMT_COMPILE("{}"), d);
   return std::distance(buffer.data(), it);
 }
 
@@ -516,27 +518,29 @@ int snprintf(T d, std::span<char>& buffer) {
 
 template<arithmetic_float T>
 int fmt_format(T d, std::span<char>& buffer) {
+  // FMT_COMPILE is a macro provided by the {fmt} library that tells the library to fully process 
+  // a format string at compile time rather than at runtime.
   switch(BenchArgs<T>::fixedSize) {
-    case 0: return fmt::format_to(buffer.data(), "{}", d) - buffer.data();
-    case 1: return fmt::format_to(buffer.data(), "{:.1g}", d) - buffer.data();
-    case 2: return fmt::format_to(buffer.data(), "{:.2g}", d) - buffer.data();
-    case 3: return fmt::format_to(buffer.data(), "{:.3g}", d) - buffer.data();
-    case 4: return fmt::format_to(buffer.data(), "{:.4g}", d) - buffer.data();
-    case 5: return fmt::format_to(buffer.data(), "{:.5g}", d) - buffer.data();
-    case 6: return fmt::format_to(buffer.data(), "{:.6g}", d) - buffer.data();
-    case 7: return fmt::format_to(buffer.data(), "{:.7g}", d) - buffer.data();
-    case 8: return fmt::format_to(buffer.data(), "{:.8g}", d) - buffer.data();
-    case 9: return fmt::format_to(buffer.data(), "{:.9g}", d) - buffer.data();
-    case 10: return fmt::format_to(buffer.data(), "{:.10g}", d) - buffer.data();
-    case 11: return fmt::format_to(buffer.data(), "{:.11g}", d) - buffer.data();
-    case 12: return fmt::format_to(buffer.data(), "{:.12g}", d) - buffer.data();
-    case 13: return fmt::format_to(buffer.data(), "{:.13g}", d) - buffer.data();
-    case 14: return fmt::format_to(buffer.data(), "{:.14g}", d) - buffer.data();
-    case 15: return fmt::format_to(buffer.data(), "{:.15g}", d) - buffer.data();
-    case 16: return fmt::format_to(buffer.data(), "{:.16g}", d) - buffer.data();
-    case 17: return fmt::format_to(buffer.data(), "{:.17g}", d) - buffer.data();
+    case 0: return fmt::format_to(buffer.data(), FMT_COMPILE("{}"), d) - buffer.data();
+    case 1: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.1g}"), d) - buffer.data();
+    case 2: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.2g}"), d) - buffer.data();
+    case 3: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.3g}"), d) - buffer.data();
+    case 4: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.4g}"), d) - buffer.data();
+    case 5: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.5g}"), d) - buffer.data();
+    case 6: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.6g}"), d) - buffer.data();
+    case 7: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.7g}"), d) - buffer.data();
+    case 8: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.8g}"), d) - buffer.data();
+    case 9: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.9g}"), d) - buffer.data();
+    case 10: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.10g}"), d) - buffer.data();
+    case 11: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.11g}"), d) - buffer.data();
+    case 12: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.12g}"), d) - buffer.data();
+    case 13: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.13g}"), d) - buffer.data();
+    case 14: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.14g}"), d) - buffer.data();
+    case 15: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.15g}"), d) - buffer.data();
+    case 16: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.16g}"), d) - buffer.data();
+    case 17: return fmt::format_to(buffer.data(), FMT_COMPILE("{:.17g}"), d) - buffer.data();
     default:
-      return fmt::format_to(buffer.data(), "{:.17g}", d) - buffer.data();
+      return fmt::format_to(buffer.data(), FMT_COMPILE("{:.17g}"), d) - buffer.data();
   }
 }
 
