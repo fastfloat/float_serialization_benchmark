@@ -30,13 +30,7 @@ add_custom_target(build_netlib ALL
     DEPENDS ${MAKEFILE_OUTPUT}
 )
 
-add_library(netlib STATIC IMPORTED GLOBAL)
-
-set_target_properties(netlib PROPERTIES
-    IMPORTED_LOCATION ${MAKEFILE_OUTPUT}
-    INTERFACE_INCLUDE_DIRECTORIES "${MAKEFILE_DIR}"
-)
-
-# Ensure the library is built before it's linked
+add_library(netlib INTERFACE)
 add_dependencies(netlib build_netlib)
 target_include_directories(netlib INTERFACE ${BUILD_DIR})
+target_link_libraries(netlib INTERFACE ${MAKEFILE_OUTPUT})
