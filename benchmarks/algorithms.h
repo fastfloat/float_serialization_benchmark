@@ -17,11 +17,10 @@
 #include <gdtoa.h>  // Netlib
 #endif
 
-#include <fmt/format.h>
-
-#include <array>
 #include <span>
 
+#include <fmt/format.h>
+#include "zmij.h"
 #include "cpp/common/traits.hpp"  // Teju Jagua
 #include "PrintFloat.h"  // Dragon4
 #include "double-conversion/double-conversion.h"
@@ -353,6 +352,11 @@ int ryu(T d, std::span<char>& buffer) {
 }
 
 template<arithmetic_float T>
+int zmij(T d, std::span<char>& buffer) {
+  return zmij::write(buffer.data(), buffer.size(), d);
+}
+
+template<arithmetic_float T>
 int teju_jagua(T d, std::span<char>& buffer) {
   const auto fields = teju::traits_t<T>::teju(d);
   char * output = buffer.data();
@@ -615,6 +619,7 @@ std::vector<BenchArgs<T>> initArgs(bool use_errol = false, size_t repeat = 0, si
     args.emplace_back("double_conversion" , wrap(s::double_conversion<T>) , true);
     args.emplace_back("swiftDtoa"         , wrap(s::swiftDtoa<T>)         , SWIFT_LIB_SUPPORTED);
     args.emplace_back("yy_double"         , wrap(s::yy_double<T>)         , YY_DOUBLE_SUPPORTED && std::is_same_v<T, double>);
+    args.emplace_back("zmij 1.0"          , wrap(s::zmij<T>)              , true);
     args.emplace_back("std::to_chars"     , wrap(s::std_to_chars<T>)      , TO_CHARS_SUPPORTED);
     // to_string, snprintf and abseil do not support shortest-length representation
     // grisu2 does not round-trip correctly
