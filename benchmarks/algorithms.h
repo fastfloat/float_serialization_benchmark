@@ -287,7 +287,7 @@ int to_string(T d, std::span<char>& buffer) {
 
 template<arithmetic_float T>
 int fmt_format(T d, std::span<char>& buffer) {
-  // FMT_COMPILE is a macro provided by the {fmt} library that tells the library to fully process 
+  // FMT_COMPILE is a macro provided by the {fmt} library that tells the library to fully process
   // a format string at compile time rather than at runtime.
   const auto it = fmt::format_to(buffer.data(), FMT_COMPILE("{}"), d);
   return std::distance(buffer.data(), it);
@@ -518,7 +518,7 @@ int snprintf(T d, std::span<char>& buffer) {
 
 template<arithmetic_float T>
 int fmt_format(T d, std::span<char>& buffer) {
-  // FMT_COMPILE is a macro provided by the {fmt} library that tells the library to fully process 
+  // FMT_COMPILE is a macro provided by the {fmt} library that tells the library to fully process
   // a format string at compile time rather than at runtime.
   switch(BenchArgs<T>::fixedSize) {
     case 0: return fmt::format_to(buffer.data(), FMT_COMPILE("{}"), d) - buffer.data();
@@ -607,13 +607,13 @@ std::vector<BenchArgs<T>> initArgs(bool use_errol = false, size_t repeat = 0, si
     args.emplace_back("dragon4"           , wrap(s::dragon4<T>)           , true                                           , 10);
     args.emplace_back("netlib"            , wrap(s::netlib<T>)            , NETLIB_SUPPORTED && std::is_same_v<T, double>  , 10);
     args.emplace_back("errol3"            , wrap(s::errol3<T>)            , ERROL_SUPPORTED && use_errol);
-    args.emplace_back("fmt_format"        , wrap(s::fmt_format<T>)        , true);
+    args.emplace_back("fmt_format 12.1.0" , wrap(s::fmt_format<T>)        , true);
     // args.emplace_back("grisu2"            , wrap(s::grisu2<T>)            , std::is_same_v<T, double>);
     args.emplace_back("grisu3"            , wrap(s::grisu3<T>)            , std::is_same_v<T, double>);
     args.emplace_back("grisu_exact"       , wrap(s::grisu_exact<T>)       , true);
     args.emplace_back("schubfach"         , wrap(s::schubfach<T>)         , true);
     args.emplace_back("dragonboxlm"       , wrap(s::dragonboxlm<T>)       , true);
-    args.emplace_back("dragonbox"         , wrap(s::dragonbox<T>)         , true);
+    args.emplace_back("dragonbox 1.1.3"   , wrap(s::dragonbox<T>)         , true);
     args.emplace_back("ryu"               , wrap(s::ryu<T>)               , true);
     args.emplace_back("teju_jagua"        , wrap(s::teju_jagua<T>)        , true);
     args.emplace_back("double_conversion" , wrap(s::double_conversion<T>) , true);
@@ -631,7 +631,7 @@ std::vector<BenchArgs<T>> initArgs(bool use_errol = false, size_t repeat = 0, si
     args.emplace_back("netlib"            , wrap(f::netlib<T>)            , NETLIB_SUPPORTED     , 10);
     args.emplace_back("abseil"            , wrap(f::abseil<T>)            , ABSEIL_SUPPORTED);
     args.emplace_back("snprintf"          , wrap(f::snprintf<T>)          , true);
-    args.emplace_back("fmt_format"        , wrap(f::fmt_format<T>)        , true);
+    args.emplace_back("fmt_format 12.1.0" , wrap(f::fmt_format<T>)        , true);
     args.emplace_back("ryu"               , wrap(f::ryu<T>)               , std::is_same_v<T, double>);
     args.emplace_back("double_conversion" , wrap(f::double_conversion<T>) , true);
     args.emplace_back("std::to_chars"     , wrap(f::std_to_chars<T>)      , TO_CHARS_SUPPORTED);
