@@ -74,6 +74,16 @@ set(grisu-exact_SOURCE_DIR ${grisu-exact_SOURCE_DIR} PARENT_SCOPE)
 message(STATUS "grisu source directory: ${grisu-exact_SOURCE_DIR}")
 
 FetchContent_Declare(
+        zmij
+        GIT_REPOSITORY https://github.com/vitaut/zmij
+        GIT_TAG tags/v1.0
+        GIT_SHALLOW TRUE
+)
+FetchContent_Populate(zmij)
+set(zmij_SOURCE_DIR ${zmij_SOURCE_DIR} PARENT_SCOPE)
+message(STATUS "zmij source directory: ${zmij_SOURCE_DIR}")
+
+FetchContent_Declare(
         dragonbox
         GIT_REPOSITORY https://github.com/jk-jeon/dragonbox
         GIT_TAG tags/1.1.3

@@ -88,6 +88,10 @@ else(TARGET swift_lib)
 endif(TARGET swift_lib)
 target_include_directories(benchmark_deps INTERFACE ${grisu-exact_SOURCE_DIR})
 
+add_library(zmij_lib STATIC ${zmij_SOURCE_DIR}/zmij.cc)
+target_include_directories(zmij_lib PUBLIC ${zmij_SOURCE_DIR})
+target_link_libraries(benchmark_deps INTERFACE zmij_lib)
+
 target_link_libraries(benchmark PUBLIC benchmark_deps)
 
 if(TO_CHARS_OK AND FROM_CHARS_OK)
