@@ -167,7 +167,7 @@ target_include_directories(dragon_schubfach_lib PUBLIC
     ${drachennest_SOURCE_DIR}/src
 )
 
-CPMAddPackage("gh:fmtlib/fmt#11.1.4")
+CPMAddPackage("gh:fmtlib/fmt#12.1.0")
 CPMAddPackage(
   GITHUB_REPOSITORY jarro2783/cxxopts
   VERSION 3.2.0
