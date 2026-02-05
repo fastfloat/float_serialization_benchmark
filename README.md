@@ -9,6 +9,7 @@ Currently, the following approaches are compared:
   - [dragon4](https://github.com/ahaldane/Dragon4)
   - [std::to_string](https://en.cppreference.com/w/cpp/string/basic_string/to_string)
   - [fmt::format](https://github.com/fmtlib/fmt)
+  - [zmij](https://github.com/vitaut/zmij)
   - [netlib](https://github.com/jwiegley/gdtoa)
   - [sprintf](https://en.cppreference.com/w/c/io/fprintf)
   - [grisu2](https://github.com/simdjson/simdjson/blob/master/src/to_chars.cpp)
