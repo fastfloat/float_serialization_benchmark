@@ -19,6 +19,7 @@ Currently, the following approaches are compared:
   - [schubfach](https://github.com/abolz/Drachennest/blob/master/src/schubfach_64.cc)
   - [Dragonbox](https://github.com/jk-jeon/dragonbox)
   - [Ryu](https://github.com/ulfjack/ryu)
+  - [xjb](https://github.com/xjb714/xjb)
   - [double-conversion](https://github.com/google/double-conversion)
   - [Abseil](https://github.com/abseil/abseil-cpp)
   - [Teju Jagua](https://github.com/cassioneri/teju_jagua)

@@ -67,6 +67,13 @@ else()
     target_compile_definitions(benchmark_deps INTERFACE ERROL_SUPPORTED=0)
 endif()
 
+if(TARGET xjb AND NOT MSVC)
+    target_link_libraries(benchmark_deps INTERFACE xjb)
+    target_compile_definitions(benchmark_deps INTERFACE XJB_SUPPORTED=1)
+else()
+    target_compile_definitions(benchmark_deps INTERFACE XJB_SUPPORTED=0)
+endif()
+
 target_link_libraries(benchmark_deps INTERFACE fmt)
 target_link_libraries(benchmark_deps INTERFACE cxxopts)
 
@@ -108,4 +115,3 @@ if(TO_CHARS_OK AND FROM_CHARS_OK)
 
     target_link_libraries(thoroughfloat64 PUBLIC benchmark_deps)
 endif(TO_CHARS_OK AND FROM_CHARS_OK)
-
