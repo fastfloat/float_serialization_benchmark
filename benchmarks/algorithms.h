@@ -39,6 +39,9 @@
 #if SWIFT_LIB_SUPPORTED
 #include "swift/Runtime/SwiftDtoa.h"
 #endif
+#if XJB_SUPPORTED
+#include "ftoa.h"
+#endif
 #if (__SIZEOF_INT128__ == 16) && (defined(__GNUC__) || defined(__clang__) || defined(__INTEL_COMPILER))
 #include "yy_double.h"
 #define YY_DOUBLE_SUPPORTED 1
@@ -362,6 +365,17 @@ int zmij(T d, std::span<char>& buffer) {
 }
 
 template<arithmetic_float T>
+int xjb(T d, std::span<char>& buffer) {
+#if XJB_SUPPORTED
+  const char* end_ptr = xjb_ftoa(d, buffer.data());
+  return end_ptr - buffer.data();
+#else
+  std::cerr << "xjb not supported" << std::endl;
+  std::abort();
+#endif
+}
+
+template<arithmetic_float T>
 int teju_jagua(T d, std::span<char>& buffer) {
   const auto fields = teju::traits_t<T>::teju(d);
   char * output = buffer.data();
@@ -622,6 +636,7 @@ std::vector<BenchArgs<T>> initArgs(bool use_errol = false, size_t repeat = 0, si
     args.emplace_back("dragonboxlm"       , wrap(s::dragonboxlm<T>)       , true);
     args.emplace_back("dragonbox 1.1.3"   , wrap(s::dragonbox<T>)         , true);
     args.emplace_back("ryu"               , wrap(s::ryu<T>)               , true);
+    args.emplace_back("xjb 1.4.0"         , wrap(s::xjb<T>)               , XJB_SUPPORTED);
     args.emplace_back("teju_jagua"        , wrap(s::teju_jagua<T>)        , true);
     args.emplace_back("double_conversion" , wrap(s::double_conversion<T>) , true);
     args.emplace_back("swiftDtoa"         , wrap(s::swiftDtoa<T>)         , SWIFT_LIB_SUPPORTED);

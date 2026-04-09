@@ -64,6 +64,15 @@ set(ryu_SOURCE_DIR ${ryu_SOURCE_DIR} PARENT_SCOPE)
 message(STATUS "ryu source directory: ${ryu_SOURCE_DIR}")
 
 FetchContent_Declare(
+        xjb
+        GIT_REPOSITORY https://github.com/xjb714/xjb.git
+        GIT_TAG tags/v1.4.0
+        GIT_SHALLOW TRUE
+)
+FetchContent_MakeAvailable(xjb)
+target_include_directories(xjb PUBLIC ${xjb_SOURCE_DIR}/src)
+
+FetchContent_Declare(
         grisu-exact
         GIT_REPOSITORY https://github.com/jk-jeon/Grisu-Exact
         GIT_TAG 4279e63faa301c03112f56f9ee4ed8bdff947fee
